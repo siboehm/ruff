@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -18,7 +19,6 @@ use imara_diff::{diff, Algorithm};
 use indicatif::ProgressStyle;
 #[cfg_attr(feature = "singlethreaded", allow(unused_imports))]
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use ruff::line_width::LineLength;
 use serde::Deserialize;
 use similar::{ChangeTag, TextDiff};
 use tempfile::NamedTempFile;
@@ -29,6 +29,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+use ruff::line_width::LineLength;
 use ruff::logging::LogLevel;
 use ruff::settings::types::{FilePattern, FilePatternSet};
 use ruff_cli::args::{FormatCommand, LogLevelArgs};
@@ -104,10 +105,12 @@ pub(crate) struct Statistics {
     intersection: u32,
     /// Files that have differences
     files_with_differences: u32,
+    /// Time the formatter took
+    duration: Duration,
 }
 
 impl Statistics {
-    pub(crate) fn from_versions(black: &str, ruff: &str) -> Self {
+    pub(crate) fn from_versions(black: &str, ruff: &str, duration: Duration) -> Self {
         if black == ruff {
             let intersection = u32::try_from(black.lines().count()).unwrap();
             Self {
@@ -115,6 +118,7 @@ impl Statistics {
                 ruff_output: 0,
                 intersection,
                 files_with_differences: 0,
+                duration,
             }
         } else {
             // `similar` was too slow (for some files >90% diffing instead of formatting)
@@ -129,6 +133,7 @@ impl Statistics {
                 ruff_output: changes.insertions,
                 intersection: u32::try_from(input.before.len()).unwrap() - changes.removals,
                 files_with_differences: 1,
+                duration,
             }
         }
     }
@@ -154,6 +159,7 @@ impl Add<Statistics> for Statistics {
             ruff_output: self.ruff_output + rhs.ruff_output,
             intersection: self.intersection + rhs.intersection,
             files_with_differences: self.files_with_differences + rhs.files_with_differences,
+            duration: self.duration + rhs.duration,
         }
     }
 }
@@ -161,6 +167,35 @@ impl Add<Statistics> for Statistics {
 impl AddAssign<Statistics> for Statistics {
     fn add_assign(&mut self, rhs: Statistics) {
         *self = *self + rhs;
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct TimedFile {
+    duration: Duration,
+    ruff_lines: u32,
+    file: PathBuf,
+}
+
+impl TimedFile {
+    fn score(&self) -> f32 {
+        let score = -(self.duration.as_secs_f32() / self.ruff_lines as f32).log10();
+        if !score.is_normal() {
+            return 0f32;
+        }
+        score
+    }
+}
+
+impl Ord for TimedFile {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.score().total_cmp(&other.score())
+    }
+}
+
+impl PartialOrd for TimedFile {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -235,6 +270,15 @@ pub(crate) fn main(args: &Args) -> anyhow::Result<ExitCode> {
     } else {
         let result = format_dev_project(&args.files, args.stability_check, args.write)?;
         let error_count = result.error_count();
+
+        if let Some(slowest_file) = &result.slowest_file {
+            info!(
+                parent: None,
+                "Slowest file {}: {:?}",
+                slowest_file.score(),
+                slowest_file,
+            );
+        }
 
         if result.error_count() > 0 {
             error!(parent: None, "{}", result.display(args.format));
@@ -314,6 +358,7 @@ fn format_dev_multi_project(
 ) -> anyhow::Result<bool> {
     let mut total_errors = 0;
     let mut total_files = 0;
+    let mut slowest_file = None;
     let mut total_syntax_error_in_input = 0;
     let start = Instant::now();
 
@@ -369,6 +414,12 @@ fn format_dev_multi_project(
                 if let Some(error_file) = &mut error_file {
                     write!(error_file, "{}", result.display(args.format)).unwrap();
                 }
+
+                // -log10 means all values are greater 0
+                if slowest_file < result.slowest_file {
+                    slowest_file = result.slowest_file.clone();
+                }
+
                 results.push(result);
 
                 pb_span.pb_inc(1);
@@ -384,6 +435,15 @@ fn format_dev_multi_project(
     drop(pb_span);
 
     let duration = start.elapsed();
+
+    if let Some(slowest_file) = slowest_file {
+        info!(
+            parent: None,
+            "Slowest file {}: {:?}",
+            slowest_file.score(),
+            slowest_file,
+        );
+    }
 
     info!(
         parent: None,
@@ -487,10 +547,25 @@ fn format_dev_project(
     let mut formatted_counter = 0;
     let mut syntax_error_in_input = 0;
     let mut diagnostics = Vec::new();
+    let mut slowest_file = None;
     for (result, file) in results {
         formatted_counter += 1;
         match result {
-            Ok(statistics_file) => statistics += statistics_file,
+            Ok(statistics_file) => {
+                let time_file = TimedFile {
+                    duration: statistics_file.duration,
+                    ruff_lines: statistics_file.ruff_output + statistics_file.intersection,
+                    file,
+                };
+
+                // ignore small file noise
+                if time_file.duration > Duration::from_millis(5)
+                    && slowest_file.as_ref().map_or(true, |y| *y > time_file)
+                {
+                    slowest_file = Some(time_file);
+                }
+                statistics += statistics_file;
+            }
             Err(error) => {
                 match error {
                     CheckFileError::SyntaxErrorInInput(error) => {
@@ -522,6 +597,7 @@ fn format_dev_project(
         file_count: formatted_counter,
         diagnostics,
         statistics,
+        slowest_file,
         syntax_error_in_input,
     })
 }
@@ -610,6 +686,7 @@ struct CheckRepoResult {
     diagnostics: Vec<Diagnostic>,
     statistics: Statistics,
     syntax_error_in_input: u32,
+    slowest_file: Option<TimedFile>,
 }
 
 impl CheckRepoResult {
@@ -726,15 +803,6 @@ Formatted twice:
             CheckFileError::IoError(error) => {
                 writeln!(f, "Error reading {}: {}", file.display(), error)?;
             }
-            #[cfg(not(debug_assertions))]
-            CheckFileError::Slow(duration) => {
-                writeln!(
-                    f,
-                    "Slow formatting {}: Formatting the file took {}ms",
-                    file.display(),
-                    duration.as_millis()
-                )?;
-            }
         }
         Ok(())
     }
@@ -762,10 +830,6 @@ enum CheckFileError {
     IoError(io::Error),
     /// From `catch_unwind`
     Panic { message: String },
-
-    /// Formatting a file took too long
-    #[cfg(not(debug_assertions))]
-    Slow(Duration),
 }
 
 impl CheckFileError {
@@ -778,8 +842,6 @@ impl CheckFileError {
             | CheckFileError::FormatError(_)
             | CheckFileError::PrintError(_)
             | CheckFileError::Panic { .. } => false,
-            #[cfg(not(debug_assertions))]
-            CheckFileError::Slow(_) => false,
         }
     }
 }
@@ -798,7 +860,6 @@ fn format_dev_file(
     options: PyFormatOptions,
 ) -> Result<Statistics, CheckFileError> {
     let content = fs::read_to_string(input_path)?;
-    #[cfg(not(debug_assertions))]
     let start = Instant::now();
     let printed = match format_module(&content, options.clone()) {
         Ok(printed) => printed,
@@ -813,8 +874,7 @@ fn format_dev_file(
         }
     };
     let formatted = printed.as_code();
-    #[cfg(not(debug_assertions))]
-    let format_duration = Instant::now() - start;
+    let duration = Instant::now() - start;
 
     if write && content != formatted {
         // Simple atomic write.
@@ -851,12 +911,7 @@ fn format_dev_file(
         }
     }
 
-    #[cfg(not(debug_assertions))]
-    if format_duration > Duration::from_millis(50) {
-        return Err(CheckFileError::Slow(format_duration));
-    }
-
-    Ok(Statistics::from_versions(&content, formatted))
+    Ok(Statistics::from_versions(&content, formatted, duration))
 }
 
 #[derive(Deserialize, Default)]
