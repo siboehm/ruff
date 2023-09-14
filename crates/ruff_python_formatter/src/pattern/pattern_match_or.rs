@@ -16,7 +16,7 @@ impl FormatNodeRule<PatternMatchOr> for FormatPatternMatchOr {
         let PatternMatchOr { range: _, patterns } = item;
         let inner = format_with(|f: &mut PyFormatter| {
             let mut patterns = patterns.iter();
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
 
             let Some(first) = patterns.next() else {
                 return Ok(());

@@ -50,12 +50,12 @@ impl FormatNodeRule<ExprGeneratorExp> for FormatExprGeneratorExp {
                 .finish()
         });
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         if self.parentheses == GeneratorExpParentheses::Preserve
             && dangling.is_empty()
-            && !is_generator_parenthesized(item, f.context().source())
+            && !is_generator_parenthesized(item, f.source())
         {
             write!(
                 f,

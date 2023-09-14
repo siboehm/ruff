@@ -20,7 +20,7 @@ impl FormatNodeRule<MatchCase> for FormatMatchCase {
             body,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_item_comments = comments.dangling(item);
 
         write!(

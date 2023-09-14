@@ -23,7 +23,7 @@ impl FormatNodeRule<StmtClassDef> for FormatStmtClassDef {
             decorator_list,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         let dangling_comments = comments.dangling(item);
         let trailing_definition_comments_start =
@@ -159,8 +159,7 @@ impl Format<PyFormatContext<'_>> for FormatDecorators<'_> {
                 // while maintaining the right amount of empty lines between the comment
                 // and the last decorator.
                 let leading_line =
-                    if lines_after_ignoring_trivia(last_decorator.end(), f.context().source()) <= 1
-                    {
+                    if lines_after_ignoring_trivia(last_decorator.end(), f.source()) <= 1 {
                         hard_line_break()
                     } else {
                         empty_line()

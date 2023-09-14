@@ -26,7 +26,7 @@ impl FormatNodeRule<ExprDictComp> for FormatExprDictComp {
                 .finish()
         });
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         write!(

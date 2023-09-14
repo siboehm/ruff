@@ -17,7 +17,7 @@ impl FormatNodeRule<WithItem> for FormatWithItem {
             optional_vars,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let trailing_as_comments = comments.dangling(item);
 
         write!(

@@ -268,14 +268,14 @@ impl<'a> BinaryLike<'a> {
 
 impl Format<PyFormatContext<'_>> for BinaryLike<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
-        let flat_binary = self.flatten(&comments, f.context().source());
+        let comments = f.clone_comments();
+        let flat_binary = self.flatten(&comments, f.source());
 
         if self.is_bool_op() {
             return in_parentheses_only_group(&&*flat_binary).fmt(f);
         }
 
-        let source = f.context().source();
+        let source = f.source();
         let mut string_operands = flat_binary
             .operands()
             .filter_map(|(index, operand)| {
@@ -362,7 +362,7 @@ impl Format<PyFormatContext<'_>> for BinaryLike<'_> {
 
                             if operand.has_unparenthesized_leading_comments(
                                 f.context().comments(),
-                                f.context().source(),
+                                f.source(),
                             ) || left_operator.has_trailing_comments()
                             {
                                 hard_line_break().fmt(f)?;
@@ -415,7 +415,7 @@ impl Format<PyFormatContext<'_>> for BinaryLike<'_> {
                         let right_operand_has_leading_comments = right_operand
                             .has_unparenthesized_leading_comments(
                                 f.context().comments(),
-                                f.context().source(),
+                                f.source(),
                             );
 
                         // Keep the operator on the same line if the right side has leading comments (and thus, breaks)
@@ -430,7 +430,7 @@ impl Format<PyFormatContext<'_>> for BinaryLike<'_> {
                         if (right_operand_has_leading_comments
                             && !is_expression_parenthesized(
                                 right_operand.expression().into(),
-                                f.context().source(),
+                                f.source(),
                             ))
                             || right_operator.has_trailing_comments()
                         {
@@ -683,10 +683,9 @@ impl Format<PyFormatContext<'_>> for FlatBinaryExpressionSlice<'_> {
 
                 // Format the operator on its own line if the right side has any leading comments.
                 if operator_part.has_trailing_comments()
-                    || right.first_operand().has_unparenthesized_leading_comments(
-                        f.context().comments(),
-                        f.context().source(),
-                    )
+                    || right
+                        .first_operand()
+                        .has_unparenthesized_leading_comments(f.context().comments(), f.source())
                 {
                     hard_line_break().fmt(f)?;
                 } else if !is_pow {
@@ -843,8 +842,8 @@ impl Format<PyFormatContext<'_>> for Operand<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
         let expression = self.expression();
 
-        return if is_expression_parenthesized(expression.into(), f.context().source()) {
-            let comments = f.context().comments().clone();
+        return if is_expression_parenthesized(expression.into(), f.source()) {
+            let comments = f.clone_comments();
             let expression_comments = comments.leading_dangling_trailing(expression);
 
             // Format leading comments that are before the inner most `(` outside of the expression's parentheses.
@@ -883,7 +882,7 @@ impl Format<PyFormatContext<'_>> for Operand<'_> {
                     comment.is_unformatted()
                         && matches!(
                             SimpleTokenizer::new(
-                                f.context().source(),
+                                f.source(),
                                 TextRange::new(comment.end(), expression.start()),
                             )
                             .skip_trivia()
@@ -934,7 +933,7 @@ impl Format<PyFormatContext<'_>> for Operand<'_> {
                     comment.is_unformatted()
                         && matches!(
                             SimpleTokenizer::new(
-                                f.context().source(),
+                                f.source(),
                                 TextRange::new(expression.end(), comment.start()),
                             )
                             .skip_trivia()

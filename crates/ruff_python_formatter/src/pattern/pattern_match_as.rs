@@ -17,7 +17,7 @@ impl FormatNodeRule<PatternMatchAs> for FormatPatternMatchAs {
             name,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         if let Some(name) = name {
             if let Some(pattern) = pattern {

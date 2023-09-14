@@ -181,7 +181,7 @@ impl<'a> FormatStringContinuation<'a> {
 
 impl Format<PyFormatContext<'_>> for FormatStringContinuation<'_> {
     fn fmt(&self, f: &mut PyFormatter) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let locator = f.context().locator();
         let quote_style = f.options().quote_style();
         let mut dangling_comments = comments.dangling(self.string);

@@ -48,13 +48,13 @@ impl FormatRule<Pattern, PyFormatContext<'_>> for FormatPattern {
         });
 
         let parenthesize = match self.parentheses {
-            Parentheses::Preserve => is_pattern_parenthesized(pattern, f.context().source()),
+            Parentheses::Preserve => is_pattern_parenthesized(pattern, f.source()),
             Parentheses::Always => true,
             Parentheses::Never => false,
         };
 
         if parenthesize {
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
 
             // Any comments on the open parenthesis.
             //

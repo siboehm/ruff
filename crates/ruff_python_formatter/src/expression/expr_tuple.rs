@@ -119,7 +119,7 @@ impl FormatNodeRule<ExprTuple> for FormatExprTuple {
             range: _,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         // Handle the edge cases of an empty tuple and a tuple with one element
@@ -137,9 +137,7 @@ impl FormatNodeRule<ExprTuple> for FormatExprTuple {
                 return empty_parenthesized("(", dangling, ")").fmt(f);
             }
             [single] => match self.parentheses {
-                TupleParentheses::Preserve
-                    if !is_tuple_parenthesized(item, f.context().source()) =>
-                {
+                TupleParentheses::Preserve if !is_tuple_parenthesized(item, f.source()) => {
                     write!(f, [single.format(), token(",")])
                 }
                 _ =>
@@ -155,7 +153,7 @@ impl FormatNodeRule<ExprTuple> for FormatExprTuple {
             //
             // Unlike other expression parentheses, tuple parentheses are part of the range of the
             // tuple itself.
-            _ if is_tuple_parenthesized(item, f.context().source())
+            _ if is_tuple_parenthesized(item, f.source())
                 && !(self.parentheses == TupleParentheses::NeverPreserve
                     && dangling.is_empty()) =>
             {

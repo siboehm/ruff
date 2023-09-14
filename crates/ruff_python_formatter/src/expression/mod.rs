@@ -103,9 +103,7 @@ impl FormatRule<Expr, PyFormatContext<'_>> for FormatExpr {
         });
 
         let parenthesize = match parentheses {
-            Parentheses::Preserve => {
-                is_expression_parenthesized(expression.into(), f.context().source())
-            }
+            Parentheses::Preserve => is_expression_parenthesized(expression.into(), f.source()),
             Parentheses::Always => true,
             // Fluent style means we already have parentheses
             Parentheses::Never => false,
@@ -120,7 +118,7 @@ impl FormatRule<Expr, PyFormatContext<'_>> for FormatExpr {
             //    foo.bar
             // )
             // ```
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
             let leading = comments.leading(expression);
             if let Some((index, open_parenthesis_comment)) = leading
                 .iter()
@@ -186,7 +184,7 @@ impl Format<PyFormatContext<'_>> for MaybeParenthesizeExpression<'_> {
 
         let comments = f.context().comments();
         let preserve_parentheses = parenthesize.is_optional()
-            && is_expression_parenthesized((*expression).into(), f.context().source());
+            && is_expression_parenthesized((*expression).into(), f.source());
 
         let has_comments =
             comments.has_leading(*expression) || comments.has_trailing_own_line(*expression);
@@ -696,7 +694,7 @@ impl CallChainLayout {
         match self {
             CallChainLayout::Default => {
                 if f.context().node_level().is_parenthesized() {
-                    CallChainLayout::from_expression(item.into(), f.context().source())
+                    CallChainLayout::from_expression(item.into(), f.source())
                 } else {
                     CallChainLayout::NonFluent
                 }

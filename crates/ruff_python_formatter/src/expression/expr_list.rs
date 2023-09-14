@@ -20,7 +20,7 @@ impl FormatNodeRule<ExprList> for FormatExprList {
             ctx: _,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         if elts.is_empty() {

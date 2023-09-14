@@ -50,7 +50,7 @@ impl FormatNodeRule<ExprIfExp> for FormatExprIfExp {
             body,
             orelse,
         } = item;
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         let inner = format_with(|f: &mut PyFormatter| {
             // We place `if test` and `else orelse` on a single line, so the `test` and `orelse` leading
@@ -100,9 +100,7 @@ struct FormatOrElse<'a> {
 impl Format<PyFormatContext<'_>> for FormatOrElse<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
         match self.orelse {
-            Expr::IfExp(expr)
-                if !is_expression_parenthesized(expr.into(), f.context().source()) =>
-            {
+            Expr::IfExp(expr) if !is_expression_parenthesized(expr.into(), f.source()) => {
                 write!(f, [expr.format().with_options(ExprIfExpLayout::Nested)])
             }
             _ => write!(f, [in_parentheses_only_group(&self.orelse.format())]),

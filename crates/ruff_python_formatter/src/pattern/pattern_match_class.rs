@@ -17,7 +17,7 @@ impl FormatNodeRule<PatternMatchClass> for FormatPatternMatchClass {
             arguments,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         write!(

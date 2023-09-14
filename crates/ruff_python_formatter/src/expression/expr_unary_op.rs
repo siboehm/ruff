@@ -28,7 +28,7 @@ impl FormatNodeRule<ExprUnaryOp> for FormatExprUnaryOp {
 
         token(operator).fmt(f)?;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         // Split off the comments that follow after the operator and format them as trailing comments.
         // ```python
@@ -52,9 +52,7 @@ impl FormatNodeRule<ExprUnaryOp> for FormatExprUnaryOp {
         //  # comment
         //  a)
         // ```
-        if !leading_operand_comments.is_empty()
-            && !is_operand_parenthesized(item, f.context().source())
-        {
+        if !leading_operand_comments.is_empty() && !is_operand_parenthesized(item, f.source()) {
             hard_line_break().fmt(f)?;
         } else if op.is_not() {
             space().fmt(f)?;

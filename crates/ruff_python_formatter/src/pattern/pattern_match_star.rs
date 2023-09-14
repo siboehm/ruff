@@ -13,7 +13,7 @@ impl FormatNodeRule<PatternMatchStar> for FormatPatternMatchStar {
     fn fmt_fields(&self, item: &PatternMatchStar, f: &mut PyFormatter) -> FormatResult<()> {
         let PatternMatchStar { name, .. } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         write!(f, [token("*"), dangling_comments(dangling)])?;

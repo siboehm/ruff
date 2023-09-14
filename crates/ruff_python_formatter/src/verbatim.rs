@@ -32,8 +32,8 @@ pub(crate) fn write_suppressed_statements_starting_with_leading_comment<'a>(
     statements: &mut std::slice::Iter<'a, Stmt>,
     f: &mut PyFormatter,
 ) -> FormatResult<&'a Stmt> {
-    let comments = f.context().comments().clone();
-    let source = f.context().source();
+    let comments = f.clone_comments();
+    let source = f.source();
 
     let mut leading_comment_ranges =
         CommentRangeIter::outside_suppression(comments.leading(first_suppressed), source);
@@ -84,8 +84,8 @@ pub(crate) fn write_suppressed_statements_starting_with_trailing_comment<'a>(
     statements: &mut std::slice::Iter<'a, Stmt>,
     f: &mut PyFormatter,
 ) -> FormatResult<&'a Stmt> {
-    let comments = f.context().comments().clone();
-    let source = f.context().source();
+    let comments = f.clone_comments();
+    let source = f.source();
     let indentation = Indentation::from_stmt(last_formatted.statement(), source);
 
     let trailing_node_comments = comments.trailing(last_formatted);
@@ -237,8 +237,8 @@ fn write_suppressed_statements<'a>(
     statements: &mut std::slice::Iter<'a, Stmt>,
     f: &mut PyFormatter,
 ) -> FormatResult<&'a Stmt> {
-    let comments = f.context().comments().clone();
-    let source = f.context().source();
+    let comments = f.clone_comments();
+    let source = f.source();
 
     let mut statement = first_suppressed;
     let mut leading_node_comments = first_suppressed_leading_comments;
@@ -583,7 +583,7 @@ struct TrailingFormatOffComment<'a>(&'a SourceComment);
 impl Format<PyFormatContext<'_>> for TrailingFormatOffComment<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
         debug_assert!(self.0.is_unformatted());
-        let lines_before_comment = lines_before(self.0.start(), f.context().source());
+        let lines_before_comment = lines_before(self.0.start(), f.source());
 
         write!(
             f,
@@ -683,7 +683,7 @@ struct FormatVerbatimStatementRange {
 impl Format<PyFormatContext<'_>> for FormatVerbatimStatementRange {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
         let lexer = lex_starts_at(
-            &f.context().source()[self.verbatim_range],
+            &f.source()[self.verbatim_range],
             Mode::Module,
             self.verbatim_range.start(),
         );
@@ -694,9 +694,7 @@ impl Format<PyFormatContext<'_>> for FormatVerbatimStatementRange {
         for logical_line in logical_lines {
             let logical_line = logical_line?;
 
-            let trimmed_line_range = self
-                .indentation
-                .trim_indent(&logical_line, f.context().source());
+            let trimmed_line_range = self.indentation.trim_indent(&logical_line, f.source());
 
             // A line without any content, write an empty line, except for the first or last (indent only) line.
             if trimmed_line_range.is_empty() {
@@ -719,7 +717,7 @@ impl Format<PyFormatContext<'_>> for FormatVerbatimStatementRange {
                     // There's currently no use case for zero-width content outside of the verbatim context (and, form feeds are a Python specific speciality).
                     // It, therefore, feels wrong to add additional complexity to the very hot `Printer::print_char` function,
                     // to work around this special case. Therefore, work around the Printer behavior here, in the cold verbatim-formatting.
-                    if f.context().source()[trimmed_line_range].width() == 0 {
+                    if f.source()[trimmed_line_range].width() == 0 {
                         empty_line().fmt(f)?;
                     } else {
                         hard_line_break().fmt(f)?;
@@ -882,7 +880,7 @@ pub(crate) struct FormatSuppressedNode<'a> {
 
 impl Format<PyFormatContext<'_>> for FormatSuppressedNode<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let node_comments = comments.leading_dangling_trailing(self.node);
 
         // Mark all comments as formatted that fall into the node range
@@ -918,7 +916,7 @@ pub(crate) fn write_suppressed_clause_header(
     f: &mut PyFormatter,
 ) -> FormatResult<()> {
     // Write the outer comments and format the node as verbatim
-    write!(f, [verbatim_text(header.range(f.context().source())?)])?;
+    write!(f, [verbatim_text(header.range(f.source())?)])?;
 
     let comments = f.context().comments();
     header.visit(&mut |child| {

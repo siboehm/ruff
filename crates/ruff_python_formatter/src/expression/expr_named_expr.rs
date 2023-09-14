@@ -18,7 +18,7 @@ impl FormatNodeRule<ExprNamedExpr> for FormatExprNamedExpr {
         } = item;
 
         // This context, a dangling comment is an end-of-line comment on the same line as the `:=`.
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         write!(

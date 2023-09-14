@@ -19,7 +19,7 @@ impl FormatNodeRule<StmtMatch> for FormatStmtMatch {
             cases,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_item_comments = comments.dangling(item);
 
         // There can be at most one dangling comment after the colon in a match statement.

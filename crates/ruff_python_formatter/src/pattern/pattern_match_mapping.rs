@@ -25,7 +25,7 @@ impl FormatNodeRule<PatternMatchMapping> for FormatPatternMatchMapping {
 
         debug_assert_eq!(keys.len(), patterns.len());
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         if keys.is_empty() && rest.is_none() {
@@ -48,7 +48,7 @@ impl FormatNodeRule<PatternMatchMapping> for FormatPatternMatchMapping {
         // }
         // ```
         let (open_parenthesis_comments, double_star_comments, after_rest_comments) =
-            if let Some((double_star, rest)) = find_double_star(item, f.context().source()) {
+            if let Some((double_star, rest)) = find_double_star(item, f.source()) {
                 let (open_parenthesis_comments, dangling) =
                     dangling.split_at(dangling.partition_point(|comment| {
                         comment.line_position().is_end_of_line()

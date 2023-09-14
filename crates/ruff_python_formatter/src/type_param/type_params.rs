@@ -22,7 +22,7 @@ impl FormatNodeRule<TypeParams> for FormatTypeParams {
         //     b,
         //     c,
         // ] = ...
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_comments = comments.dangling(item.as_any_node_ref());
         write!(f, [trailing_comments(dangling_comments)])?;
 

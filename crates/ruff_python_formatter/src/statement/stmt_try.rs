@@ -62,7 +62,7 @@ impl FormatNodeRule<StmtTry> for FormatStmtTry {
             range: _,
         } = item;
 
-        let comments_info = f.context().comments().clone();
+        let comments_info = f.clone_comments();
         let mut dangling_comments = comments_info.dangling(item);
 
         (_, dangling_comments) = format_case(item, CaseKind::Try, None, dangling_comments, f)?;

@@ -16,10 +16,10 @@ impl FormatNodeRule<PatternMatchSequence> for FormatPatternMatchSequence {
     fn fmt_fields(&self, item: &PatternMatchSequence, f: &mut PyFormatter) -> FormatResult<()> {
         let PatternMatchSequence { patterns, range } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
-        let sequence_type = SequenceType::from_pattern(item, f.context().source());
+        let sequence_type = SequenceType::from_pattern(item, f.source());
         if patterns.is_empty() {
             return match sequence_type {
                 SequenceType::List => empty_parenthesized("[", dangling, "]").fmt(f),

@@ -42,7 +42,7 @@ impl Format<PyFormatContext<'_>> for KeyValuePair<'_> {
         } else {
             // TODO(charlie): Make these dangling comments on the `ExprDict`, and identify them
             // dynamically, so as to avoid the parent rendering its child's comments.
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
             let leading_value_comments = comments.leading(self.value);
             write!(
                 f,
@@ -66,7 +66,7 @@ impl FormatNodeRule<ExprDict> for FormatExprDict {
 
         debug_assert_eq!(keys.len(), values.len());
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         if values.is_empty() {

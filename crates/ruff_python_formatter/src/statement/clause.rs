@@ -345,7 +345,7 @@ impl<'ast> Format<PyFormatContext<'ast>> for FormatClauseHeader<'_, 'ast> {
             leading_alternate_branch_comments(leading_comments, last_node).fmt(f)?;
         }
 
-        if SuppressionKind::has_skip_comment(self.trailing_colon_comment, f.context().source()) {
+        if SuppressionKind::has_skip_comment(self.trailing_colon_comment, f.source()) {
             write_suppressed_clause_header(self.header, f)?;
         } else {
             f.write_fmt(Arguments::from(&self.formatter))?;

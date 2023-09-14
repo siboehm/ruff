@@ -300,7 +300,7 @@ pub(crate) struct Comments<'a> {
     /// The use of an `Rc` solves this problem because we can cheaply clone `comments` before iterating.
     ///
     /// ```block
-    /// let comments = f.context().comments().clone();
+    /// let comments = f.clone_comments();
     /// for leading in comments.leading_comments(node) {
     ///     write!(f, [comment(leading.piece.text())])?;
     /// }

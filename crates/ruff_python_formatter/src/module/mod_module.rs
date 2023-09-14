@@ -4,7 +4,7 @@ use ruff_python_ast::ModModule;
 
 use crate::comments::{trailing_comments, SourceComment};
 use crate::statement::suite::SuiteKind;
-use crate::{write, AsFormat, FormatNodeRule, PyFormatter};
+use crate::{write, AsFormat, FormatNodeRule, PyFormatter, PyFormatterExt};
 
 #[derive(Default)]
 pub struct FormatModModule;
@@ -12,7 +12,7 @@ pub struct FormatModModule;
 impl FormatNodeRule<ModModule> for FormatModModule {
     fn fmt_fields(&self, item: &ModModule, f: &mut PyFormatter) -> FormatResult<()> {
         let ModModule { range: _, body } = item;
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         write!(
             f,

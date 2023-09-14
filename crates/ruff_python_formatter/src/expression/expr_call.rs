@@ -29,7 +29,7 @@ impl FormatNodeRule<ExprCall> for FormatExprCall {
             arguments,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         let call_chain_layout = self.call_chain_layout.apply_in_node(item, f);

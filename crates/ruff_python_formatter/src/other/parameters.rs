@@ -59,9 +59,9 @@ impl FormatNodeRule<Parameters> for FormatParameters {
             kwarg,
         } = item;
 
-        let (slash, star) = find_parameter_separators(f.context().source(), item);
+        let (slash, star) = find_parameter_separators(f.source(), item);
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         // First dangling comment: trailing the opening parenthesis, e.g.:
@@ -76,19 +76,17 @@ impl FormatNodeRule<Parameters> for FormatParameters {
         let parenthesis_comments_end = usize::from(dangling.first().is_some_and(|comment| {
             if comment.line_position().is_end_of_line() {
                 // Ensure that there are no tokens between the open bracket and the comment.
-                let mut lexer = SimpleTokenizer::new(
-                    f.context().source(),
-                    TextRange::new(item.start(), comment.start()),
-                )
-                .skip_trivia()
-                .skip_while(|t| {
-                    matches!(
-                        t.kind(),
-                        SimpleTokenKind::LParen
-                            | SimpleTokenKind::LBrace
-                            | SimpleTokenKind::LBracket
-                    )
-                });
+                let mut lexer =
+                    SimpleTokenizer::new(f.source(), TextRange::new(item.start(), comment.start()))
+                        .skip_trivia()
+                        .skip_while(|t| {
+                            matches!(
+                                t.kind(),
+                                SimpleTokenKind::LParen
+                                    | SimpleTokenKind::LBrace
+                                    | SimpleTokenKind::LBracket
+                            )
+                        });
                 if lexer.next().is_none() {
                     return true;
                 }
@@ -215,14 +213,14 @@ impl FormatNodeRule<Parameters> for FormatParameters {
             if self.parentheses == ParametersParentheses::Never {
                 // For lambdas (no parentheses), preserve the trailing comma. It doesn't
                 // behave like a magic trailing comma, it's just preserved
-                if has_trailing_comma(item, last_node, f.context().source()) {
+                if has_trailing_comma(item, last_node, f.source()) {
                     write!(f, [token(",")])?;
                 }
             } else {
                 write!(f, [if_group_breaks(&token(","))])?;
 
                 if f.options().magic_trailing_comma().is_respect()
-                    && has_trailing_comma(item, last_node, f.context().source())
+                    && has_trailing_comma(item, last_node, f.source())
                 {
                     // Make the magic trailing comma expand the group
                     write!(f, [hard_line_break()])?;

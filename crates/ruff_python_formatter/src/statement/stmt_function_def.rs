@@ -23,7 +23,7 @@ impl FormatNodeRule<StmtFunctionDef> for FormatStmtFunctionDef {
             ..
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         let dangling_comments = comments.dangling(item);
         let trailing_definition_comments_start =
@@ -89,7 +89,7 @@ fn format_function_header(f: &mut PyFormatter, item: &StmtFunctionDef) -> Format
         body: _,
     } = item;
 
-    let comments = f.context().comments().clone();
+    let comments = f.clone_comments();
 
     if *is_async {
         write!(f, [token("async"), space()])?;
@@ -152,7 +152,7 @@ fn format_function_header(f: &mut PyFormatter, item: &StmtFunctionDef) -> Format
                     [maybe_parenthesize_expression(
                         return_annotation,
                         item,
-                        if empty_parameters(parameters, f.context().source()) {
+                        if empty_parameters(parameters, f.source()) {
                             // If the parameters are empty, add parentheses if the return annotation
                             // breaks at all.
                             Parenthesize::IfBreaksOrIfRequired

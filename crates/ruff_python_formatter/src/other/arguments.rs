@@ -26,13 +26,13 @@ impl FormatNodeRule<Arguments> for FormatArguments {
         // )
         // ```
         if args.is_empty() && keywords.is_empty() {
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
             let dangling = comments.dangling(item);
             return write!(f, [empty_parenthesized("(", dangling, ")")]);
         }
 
         let all_arguments = format_with(|f: &mut PyFormatter| {
-            let source = f.context().source();
+            let source = f.source();
             let mut joiner = f.join_comma_separated(range.end());
             match args.as_slice() {
                 [arg] if keywords.is_empty() => {
@@ -82,7 +82,7 @@ impl FormatNodeRule<Arguments> for FormatArguments {
         //     b,
         //     c,
         // )
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_comments = comments.dangling(item);
 
         write!(

@@ -36,7 +36,7 @@ impl Format<PyFormatContext<'_>> for FormatLeadingComments<'_> {
             f: &mut PyFormatter,
         ) -> FormatResult<()> {
             for comment in comments.iter().filter(|comment| comment.is_unformatted()) {
-                let lines_after_comment = lines_after(comment.end(), f.context().source());
+                let lines_after_comment = lines_after(comment.end(), f.source());
                 write!(
                     f,
                     [format_comment(comment), empty_lines(lines_after_comment)]
@@ -50,7 +50,7 @@ impl Format<PyFormatContext<'_>> for FormatLeadingComments<'_> {
 
         match self {
             FormatLeadingComments::Node(node) => {
-                let comments = f.context().comments().clone();
+                let comments = f.clone_comments();
                 write_leading_comments(comments.leading(*node), f)
             }
             FormatLeadingComments::Comments(comments) => write_leading_comments(comments, f),
@@ -86,7 +86,7 @@ impl Format<PyFormatContext<'_>> for FormatLeadingAlternateBranchComments<'_> {
         if let Some(first_leading) = self.comments.first() {
             // Leading comments only preserves the lines after the comment but not before.
             // Insert the necessary lines.
-            if lines_before(first_leading.start(), f.context().source()) > 1 {
+            if lines_before(first_leading.start(), f.source()) > 1 {
                 write!(f, [empty_line()])?;
             }
 
@@ -94,7 +94,7 @@ impl Format<PyFormatContext<'_>> for FormatLeadingAlternateBranchComments<'_> {
         } else if let Some(last_preceding) = self.last_node {
             // The leading comments formatting ensures that it preserves the right amount of lines after
             // We need to take care of this ourselves, if there's no leading `else` comment.
-            if lines_after_ignoring_trivia(last_preceding.end(), f.context().source()) > 1 {
+            if lines_after_ignoring_trivia(last_preceding.end(), f.source()) > 1 {
                 write!(f, [empty_line()])?;
             }
         }
@@ -118,7 +118,7 @@ impl Format<PyFormatContext<'_>> for FormatTrailingComments<'_> {
             has_trailing_own_line_comment |= trailing.line_position().is_own_line();
 
             if has_trailing_own_line_comment {
-                let lines_before_comment = lines_before(trailing.start(), f.context().source());
+                let lines_before_comment = lines_before(trailing.start(), f.source());
 
                 // A trailing comment at the end of a body or list
                 // ```python
@@ -179,7 +179,7 @@ pub(crate) enum FormatDanglingComments<'a> {
 
 impl Format<PyFormatContext<'_>> for FormatDanglingComments<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext>) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         let dangling_comments = match self {
             Self::Comments(comments) => comments,
@@ -206,7 +206,7 @@ impl Format<PyFormatContext<'_>> for FormatDanglingComments<'_> {
                 f,
                 [
                     format_comment(comment),
-                    empty_lines(lines_after(comment.end(), f.context().source()))
+                    empty_lines(lines_after(comment.end(), f.source()))
                 ]
             )?;
 
@@ -334,7 +334,7 @@ pub(crate) struct FormatTrailingEndOfLineComment<'a> {
 impl Format<PyFormatContext<'_>> for FormatTrailingEndOfLineComment<'_> {
     fn fmt(&self, f: &mut PyFormatter) -> FormatResult<()> {
         let slice = self.comment.slice();
-        let source = SourceCode::new(f.context().source());
+        let source = SourceCode::new(f.source());
 
         let normalized_comment = normalize_comment(self.comment, source)?;
 
@@ -519,7 +519,7 @@ impl Format<PyFormatContext<'_>> for FormatEmptyLinesBeforeTrailingComments<'_> 
             .iter()
             .find(|comment| comment.line_position().is_own_line())
         {
-            let actual = lines_before(comment.start(), f.context().source()).saturating_sub(1);
+            let actual = lines_before(comment.start(), f.source()).saturating_sub(1);
             for _ in actual..self.empty_lines {
                 write!(f, [empty_line()])?;
             }

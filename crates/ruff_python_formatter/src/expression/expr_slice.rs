@@ -23,19 +23,15 @@ impl FormatNodeRule<ExprSlice> for FormatExprSlice {
             range,
         } = item;
 
-        let (first_colon, second_colon) = find_colons(
-            f.context().source(),
-            *range,
-            lower.as_deref(),
-            upper.as_deref(),
-        )?;
+        let (first_colon, second_colon) =
+            find_colons(f.source(), *range, lower.as_deref(), upper.as_deref())?;
 
         // Handle comment placement
         // In placements.rs, we marked comment for None nodes a dangling and associated all others
         // as leading or dangling wrt to a node. That means we either format a node and only have
         // to handle newlines and spacing, or the node is None and we insert the corresponding
         // slice of dangling comments
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let slice_dangling_comments = comments.dangling(item.as_any_node_ref());
         // Put the dangling comments (where the nodes are missing) into buckets
         let first_colon_partition_index =

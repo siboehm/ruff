@@ -32,7 +32,7 @@ impl FormatNodeRule<StmtWith> for FormatStmtWith {
         // with CtxManager() as example:  # comment
         //     ...
         // ```
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_comments = comments.dangling(item.as_any_node_ref());
         let partition_point = dangling_comments.partition_point(|comment| {
             item.items

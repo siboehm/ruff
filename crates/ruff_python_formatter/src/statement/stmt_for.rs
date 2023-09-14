@@ -38,7 +38,7 @@ impl FormatNodeRule<StmtFor> for FormatStmtFor {
             range: _,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling_comments = comments.dangling(item);
         let body_start = body.first().map_or(iter.end(), Stmt::start);
         let or_else_comments_start =

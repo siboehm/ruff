@@ -58,7 +58,7 @@ impl FormatNodeRule<StmtImportFrom> for FormatStmtImportFrom {
         //     B,
         // )
         // ```
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let parenthesized_comments = comments.dangling(item.as_any_node_ref());
 
         if parenthesized_comments.is_empty() {

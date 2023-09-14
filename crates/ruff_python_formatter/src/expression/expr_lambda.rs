@@ -18,7 +18,7 @@ impl FormatNodeRule<ExprLambda> for FormatExprLambda {
             body,
         } = item;
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         write!(f, [token("lambda")])?;

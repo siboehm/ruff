@@ -57,8 +57,8 @@ impl FormatRule<Suite, PyFormatContext<'_>> for FormatSuite {
             }
         };
 
-        let comments = f.context().comments().clone();
-        let source = f.context().source();
+        let comments = f.clone_comments();
+        let source = f.source();
         let source_type = f.options().source_type();
 
         let f = &mut WithNodeLevel::new(node_level, f);
@@ -339,7 +339,7 @@ fn stub_file_empty_lines(
     following_comments: &LeadingDanglingTrailingComments,
     f: &mut PyFormatter,
 ) -> FormatResult<()> {
-    let source = f.context().source();
+    let source = f.source();
     // Preserve the empty line if the definitions are separated by a comment
     let empty_line_condition = preceding_comments.has_trailing()
         || following_comments.has_leading()
@@ -487,7 +487,7 @@ impl<'a> DocstringStmt<'a> {
 
 impl Format<PyFormatContext<'_>> for DocstringStmt<'_> {
     fn fmt(&self, f: &mut Formatter<PyFormatContext<'_>>) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let node_comments = comments.leading_dangling_trailing(self.0);
 
         if FormatStmtExpr.is_suppressed(node_comments.trailing, f.context()) {

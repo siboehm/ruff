@@ -45,7 +45,7 @@ impl FormatNodeRule<ExprAttribute> for FormatExprAttribute {
                         value: Constant::Int(_) | Constant::Float(_),
                         ..
                     })
-                ) || is_expression_parenthesized(value.into(), f.context().source());
+                ) || is_expression_parenthesized(value.into(), f.source());
 
             if call_chain_layout == CallChainLayout::Fluent {
                 if parenthesize_value {
@@ -90,7 +90,7 @@ impl FormatNodeRule<ExprAttribute> for FormatExprAttribute {
             //      b
             // )
             // ```
-            let comments = f.context().comments().clone();
+            let comments = f.clone_comments();
             let dangling = comments.dangling(item);
             let (before_dot, after_dot) = if dangling.is_empty() {
                 (dangling, dangling)
@@ -98,7 +98,7 @@ impl FormatNodeRule<ExprAttribute> for FormatExprAttribute {
                 let dot_token = find_only_token_in_range(
                     TextRange::new(item.value.end(), item.attr.start()),
                     SimpleTokenKind::Dot,
-                    f.context().source(),
+                    f.source(),
                 );
                 dangling.split_at(
                     dangling.partition_point(|comment| comment.start() < dot_token.start()),

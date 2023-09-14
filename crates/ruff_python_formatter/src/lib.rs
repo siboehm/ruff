@@ -37,13 +37,28 @@ include!("../../ruff_formatter/shared_traits.rs");
 /// 'ast is the lifetime of the source code (input), 'buf is the lifetime of the buffer (output)
 pub(crate) type PyFormatter<'ast, 'buf> = Formatter<'buf, PyFormatContext<'ast>>;
 
+pub(crate) trait PyFormatterExt<'a> {
+    fn source(&self) -> &'a str;
+    fn clone_comments(&self) -> Comments<'a>;
+}
+
+impl<'ast> PyFormatterExt<'ast> for PyFormatter<'ast, '_> {
+    fn source(&self) -> &'ast str {
+        self.context().source()
+    }
+
+    fn clone_comments(&self) -> Comments<'ast> {
+        self.context().comments().clone()
+    }
+}
+
 /// Rule for formatting a Python [`AstNode`].
 pub(crate) trait FormatNodeRule<N>
 where
     N: AstNode,
 {
     fn fmt(&self, node: &N, f: &mut PyFormatter) -> FormatResult<()> {
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
 
         let node_comments = comments.leading_dangling_trailing(node.as_any_node_ref());
 

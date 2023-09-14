@@ -21,7 +21,7 @@ impl FormatNodeRule<ExprSet> for FormatExprSet {
                 .finish()
         });
 
-        let comments = f.context().comments().clone();
+        let comments = f.clone_comments();
         let dangling = comments.dangling(item);
 
         parenthesized("{", &joined, "}")
