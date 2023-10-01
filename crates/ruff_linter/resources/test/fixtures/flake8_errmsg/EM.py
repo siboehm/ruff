@@ -58,3 +58,15 @@ def f_fix_indentation_check(foo):
 # Report these, but don't fix them
 if foo: raise RuntimeError("This is an example exception")
 if foo: x = 1; raise RuntimeError("This is an example exception")
+
+
+def f_triple_quoted_string():
+    raise RuntimeError(f"""This is an {"example"} exception""")
+
+
+# Generate a violaiton for this, but don't fix it
+def f_multi_line_string():
+    raise RuntimeError(
+        "first"
+        "second"
+    )

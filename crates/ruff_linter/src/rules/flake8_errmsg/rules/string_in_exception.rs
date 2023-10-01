@@ -1,10 +1,11 @@
-use ruff_python_ast::{self as ast, Arguments, Constant, Expr, ExprContext, Stmt};
-use ruff_text_size::{Ranged, TextRange};
+use ruff_python_ast::{self as ast, Arguments, Constant, Expr, Stmt};
+use ruff_source_file::Locator;
+use ruff_text_size::Ranged;
 
 use ruff_diagnostics::{Diagnostic, Edit, Fix, FixKind, Violation};
 use ruff_macros::{derive_message_formats, violation};
 use ruff_python_ast::whitespace;
-use ruff_python_codegen::{Generator, Stylist};
+use ruff_python_codegen::Stylist;
 
 use crate::checkers::ast::Checker;
 use crate::registry::{AsRule, Rule};
@@ -194,13 +195,15 @@ pub(crate) fn string_in_exception(checker: &mut Checker, stmt: &Stmt, exc: &Expr
                                 if let Some(indentation) =
                                     whitespace::indentation(checker.locator(), stmt)
                                 {
-                                    if checker.semantic().is_available("msg") {
+                                    if checker.semantic().is_available("msg")
+                                        && !checker.locator().contains_line_break(first.range())
+                                    {
                                         diagnostic.set_fix(generate_fix(
                                             stmt,
                                             first,
                                             indentation,
                                             checker.stylist(),
-                                            checker.generator(),
+                                            checker.locator(),
                                         ));
                                     }
                                 }
@@ -217,13 +220,15 @@ pub(crate) fn string_in_exception(checker: &mut Checker, stmt: &Stmt, exc: &Expr
                             if let Some(indentation) =
                                 whitespace::indentation(checker.locator(), stmt)
                             {
-                                if checker.semantic().is_available("msg") {
+                                if checker.semantic().is_available("msg")
+                                    && !checker.locator().contains_line_break(first.range())
+                                {
                                     diagnostic.set_fix(generate_fix(
                                         stmt,
                                         first,
                                         indentation,
                                         checker.stylist(),
-                                        checker.generator(),
+                                        checker.locator(),
                                     ));
                                 }
                             }
@@ -244,13 +249,15 @@ pub(crate) fn string_in_exception(checker: &mut Checker, stmt: &Stmt, exc: &Expr
                                     if let Some(indentation) =
                                         whitespace::indentation(checker.locator(), stmt)
                                     {
-                                        if checker.semantic().is_available("msg") {
+                                        if checker.semantic().is_available("msg")
+                                            && !checker.locator().contains_line_break(first.range())
+                                        {
                                             diagnostic.set_fix(generate_fix(
                                                 stmt,
                                                 first,
                                                 indentation,
                                                 checker.stylist(),
-                                                checker.generator(),
+                                                checker.locator(),
                                             ));
                                         }
                                     }
@@ -281,23 +288,13 @@ fn generate_fix(
     exc_arg: &Expr,
     indentation: &str,
     stylist: &Stylist,
-    generator: Generator,
+    locator: &Locator,
 ) -> Fix {
-    let assignment = Stmt::Assign(ast::StmtAssign {
-        targets: vec![Expr::Name(ast::ExprName {
-            id: "msg".into(),
-            ctx: ExprContext::Store,
-            range: TextRange::default(),
-        })],
-        value: Box::new(exc_arg.clone()),
-        range: TextRange::default(),
-    });
-
     Fix::suggested_edits(
         Edit::insertion(
             format!(
-                "{}{}{}",
-                generator.stmt(&assignment),
+                "msg = {}{}{}",
+                locator.slice(exc_arg.range()),
                 stylist.line_ending().as_str(),
                 indentation,
             ),

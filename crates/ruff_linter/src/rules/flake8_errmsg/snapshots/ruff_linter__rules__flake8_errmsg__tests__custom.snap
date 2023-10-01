@@ -177,4 +177,23 @@ EM.py:60:35: EM101 Exception must not use a string literal, assign to variable f
    |
    = help: Assign to variable; remove string literal
 
+EM.py:64:24: EM102 [*] Exception must not use an f-string literal, assign to variable first
+   |
+63 | def f_triple_quoted_string():
+64 |     raise RuntimeError(f"""This is an {"example"} exception""")
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ EM102
+   |
+   = help: Assign to variable; remove f-string literal
+
+ℹ Suggested fix
+61 61 | 
+62 62 | 
+63 63 | def f_triple_quoted_string():
+64    |-    raise RuntimeError(f"""This is an {"example"} exception""")
+   64 |+    msg = f"""This is an {"example"} exception"""
+   65 |+    raise RuntimeError(msg)
+65 66 | 
+66 67 | 
+67 68 | # Generate a violaiton for this, but don't fix it
+
 
