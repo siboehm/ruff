@@ -181,6 +181,8 @@ impl Configuration {
         let lint = self.lint;
         let lint_preview = lint.preview.unwrap_or(global_preview);
 
+        let line_width = self.line_width.unwrap_or_default();
+
         Ok(Settings {
             cache_dir: self
                 .cache_dir
@@ -223,7 +225,7 @@ impl Configuration {
                     .unwrap_or_else(|| DUMMY_VARIABLE_RGX.clone()),
                 external: FxHashSet::from_iter(lint.external.unwrap_or_default()),
                 ignore_init_module_imports: lint.ignore_init_module_imports.unwrap_or_default(),
-                line_width: self.line_width.unwrap_or_default(),
+                line_width,
                 tab_size: self.tab_size.unwrap_or_default(),
                 namespace_packages: self.namespace_packages.unwrap_or_default(),
                 per_file_ignores: resolve_per_file_ignores(
@@ -346,7 +348,7 @@ impl Configuration {
                     .unwrap_or_default(),
                 pycodestyle: lint
                     .pycodestyle
-                    .map(PycodestyleOptions::into_settings)
+                    .map(|options| options.into_settings(line_width))
                     .unwrap_or_default(),
                 pydocstyle: lint
                     .pydocstyle

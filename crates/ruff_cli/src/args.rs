@@ -13,6 +13,7 @@ use ruff_linter::settings::types::{
 };
 use ruff_linter::{RuleParser, RuleSelector, RuleSelectorParser};
 use ruff_workspace::configuration::{Configuration, RuleSelection};
+use ruff_workspace::options::PycodestyleOptions;
 use ruff_workspace::resolver::ConfigurationTransformer;
 
 #[derive(Debug, Parser)]
@@ -680,6 +681,10 @@ impl ConfigurationTransformer for CliOverrides {
         }
         if let Some(line_width) = self.line_width {
             config.line_width = Some(line_width);
+            config.lint.pycodestyle = Some(PycodestyleOptions {
+                max_line_width: Some(line_width),
+                ..config.lint.pycodestyle.unwrap_or_default()
+            });
         }
         if let Some(preview) = &self.preview {
             config.preview = Some(*preview);

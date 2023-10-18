@@ -2266,6 +2266,31 @@ impl Pep8NamingOptions {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct PycodestyleOptions {
+    /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`line-too-long`] violations. By default,
+    /// this is set to the value of the global `line-width` option.
+    ///
+    /// Overriding the global [`line-width`] allows to use a lower limit for Ruff's formatter and warn about
+    /// extra-long lines that can't be split by the formatter using [`line-too-long`]:
+    ///
+    /// ```toml
+    /// line-width = 88 # The formatter breaks line's with a width of 88.
+    ///
+    /// [pycodestyle]
+    /// max-line-width = 100 # E501 reports lines that exceed the width of 100.
+    /// ```
+    ///
+    /// [`line-too-long`].
+    ///
+    /// See the [`line-too-long`](https://docs.astral.sh/ruff/rules/line-too-long/) rule for more information.
+    #[option(
+        default = "null",
+        value_type = "int",
+        example = r#"
+            max-line-width = 100
+        "#
+    )]
+    pub max_line_width: Option<LineWidth>,
+
     /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`doc-line-too-long`] violations within
     /// documentation (`W505`), including standalone comments. By default,
     /// this is set to null which disables reporting violations.
@@ -2312,7 +2337,7 @@ pub struct PycodestyleOptions {
 }
 
 impl PycodestyleOptions {
-    pub fn into_settings(self) -> pycodestyle::settings::Settings {
+    pub fn into_settings(self, global_line_width: LineWidth) -> pycodestyle::settings::Settings {
         #[allow(deprecated)]
         let max_doc_width = {
             if self.max_doc_length.is_some() {
@@ -2323,6 +2348,7 @@ impl PycodestyleOptions {
 
         pycodestyle::settings::Settings {
             max_doc_width,
+            max_line_width: self.max_line_width.unwrap_or(global_line_width),
             ignore_overlong_task_comments: self.ignore_overlong_task_comments.unwrap_or_default(),
         }
     }
