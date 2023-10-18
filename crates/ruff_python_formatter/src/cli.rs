@@ -11,7 +11,7 @@ use ruff_python_parser::{parse_ok_tokens, Mode};
 use ruff_text_size::Ranged;
 
 use crate::comments::collect_comments;
-use crate::{format_module_ast, PyFormatOptions};
+use crate::{format_module_ast, PreviewMode, PyFormatOptions};
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum Emit {
@@ -33,6 +33,8 @@ pub struct Cli {
     #[clap(long)]
     pub check: bool,
     #[clap(long)]
+    pub preview: bool,
+    #[clap(long)]
     pub print_ir: bool,
     #[clap(long)]
     pub print_comments: bool,
@@ -46,7 +48,11 @@ pub fn format_and_debug_print(source: &str, cli: &Cli, source_type: &Path) -> Re
     let module = parse_ok_tokens(tokens, source, Mode::Module, "<filename>")
         .context("Syntax error in input")?;
 
-    let options = PyFormatOptions::from_extension(source_type);
+    let options = PyFormatOptions::from_extension(source_type).with_preview(if cli.preview {
+        PreviewMode::Enabled
+    } else {
+        PreviewMode::Disabled
+    });
 
     let source_code = SourceCode::new(source);
     let formatted = format_module_ast(&module, &comment_ranges, source, options)
