@@ -1,7 +1,7 @@
 use ruff_formatter::{write, FormatOwnedWithRule, FormatRefWithRule, FormatRuleWithOptions};
 use ruff_python_ast::helpers::is_compound_statement;
 use ruff_python_ast::AnyNodeRef;
-use ruff_python_ast::{self as ast, Constant, Expr, ExprConstant, PySourceType, Stmt, Suite};
+use ruff_python_ast::{self as ast, Expr, PySourceType, Stmt, Suite};
 use ruff_python_trivia::{lines_after, lines_after_ignoring_end_of_line_trivia, lines_before};
 use ruff_text_size::{Ranged, TextRange};
 
@@ -9,7 +9,6 @@ use crate::comments::{
     leading_comments, trailing_comments, Comments, LeadingDanglingTrailingComments,
 };
 use crate::context::{NodeLevel, WithNodeLevel};
-use crate::expression::expr_constant::ExprConstantLayout;
 use crate::expression::string::StringLayout;
 use crate::prelude::*;
 use crate::statement::stmt_expr::FormatStmtExpr;
@@ -488,13 +487,7 @@ pub(crate) fn contains_only_an_ellipsis(body: &[Stmt], comments: &Comments) -> b
             let [node] = body else {
                 return false;
             };
-            matches!(
-                value.as_ref(),
-                Expr::Constant(ast::ExprConstant {
-                    value: Constant::Ellipsis,
-                    ..
-                })
-            ) && !comments.has_leading(node)
+            matches!(value.as_ref(), Expr::EllipsisLiteral(_)) && !comments.has_leading(node)
         }
         _ => false,
     }
@@ -546,10 +539,13 @@ impl<'a> DocstringStmt<'a> {
             return None;
         };
 
-        if let Expr::Constant(ExprConstant { value, .. }) = value.as_ref() {
-            if !value.is_implicit_concatenated() {
-                return Some(DocstringStmt(stmt));
-            }
+        // Bytes literals are not docstrings
+        if let Expr::StringLiteral(ast::ExprStringLiteral {
+            implicit_concatenated: false,
+            ..
+        }) = value.as_ref()
+        {
+            return Some(DocstringStmt(stmt));
         }
 
         None
@@ -564,13 +560,13 @@ impl Format<PyFormatContext<'_>> for DocstringStmt<'_> {
         if FormatStmtExpr.is_suppressed(node_comments.trailing, f.context()) {
             suppressed_node(self.0).fmt(f)
         } else {
-            // SAFETY: Safe because `DocStringStmt` guarantees that it only ever wraps a `ExprStmt` containing a `ConstantExpr`.
-            let constant = self
+            // SAFETY: Safe because `DocStringStmt` guarantees that it only ever wraps a `ExprStmt` containing a `ExprStringLiteral`.
+            let string_literal = self
                 .0
                 .as_expr_stmt()
                 .unwrap()
                 .value
-                .as_constant_expr()
+                .as_string_literal_expr()
                 .unwrap();
 
             // We format the expression, but the statement carries the comments
@@ -578,9 +574,9 @@ impl Format<PyFormatContext<'_>> for DocstringStmt<'_> {
                 f,
                 [
                     leading_comments(node_comments.leading),
-                    constant
+                    string_literal
                         .format()
-                        .with_options(ExprConstantLayout::String(StringLayout::DocString)),
+                        .with_options(StringLayout::DocString),
                     trailing_comments(node_comments.trailing),
                 ]
             )

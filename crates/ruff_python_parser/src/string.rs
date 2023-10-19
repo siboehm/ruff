@@ -1,6 +1,6 @@
 //! Parsing of string literals, bytes literals, and implicit string concatenation.
 
-use ruff_python_ast::{self as ast, BytesConstant, Constant, Expr, StringConstant};
+use ruff_python_ast::{self as ast, Expr};
 use ruff_text_size::{Ranged, TextLen, TextRange, TextSize};
 
 use crate::lexer::{LexicalError, LexicalErrorType};
@@ -9,31 +9,9 @@ use crate::token::{StringKind, Tok};
 // unicode_name2 does not expose `MAX_NAME_LENGTH`, so we replicate that constant here, fix #3798
 const MAX_UNICODE_NAME: usize = 88;
 
-pub(crate) struct StringConstantWithRange {
-    value: StringConstant,
-    range: TextRange,
-}
-
-impl Ranged for StringConstantWithRange {
-    fn range(&self) -> TextRange {
-        self.range
-    }
-}
-
-pub(crate) struct BytesConstantWithRange {
-    value: BytesConstant,
-    range: TextRange,
-}
-
-impl Ranged for BytesConstantWithRange {
-    fn range(&self) -> TextRange {
-        self.range
-    }
-}
-
 pub(crate) enum StringType {
-    Str(StringConstantWithRange),
-    Bytes(BytesConstantWithRange),
+    Str(ast::ExprStringLiteral),
+    Bytes(ast::ExprBytesLiteral),
     FString(ast::ExprFString),
 }
 
@@ -50,7 +28,7 @@ impl Ranged for StringType {
 impl StringType {
     fn is_unicode(&self) -> bool {
         match self {
-            Self::Str(StringConstantWithRange { value, .. }) => value.unicode,
+            Self::Str(ast::ExprStringLiteral { unicode, .. }) => *unicode,
             _ => false,
         }
     }
@@ -243,8 +221,10 @@ impl<'a> StringParser<'a> {
                 ch => value.push(ch),
             }
         }
-        Ok(Expr::from(ast::ExprConstant {
-            value: value.into(),
+        Ok(Expr::from(ast::ExprStringLiteral {
+            value,
+            unicode: false,
+            implicit_concatenated: false,
             range: self.range(start_location),
         }))
     }
@@ -271,8 +251,9 @@ impl<'a> StringParser<'a> {
             }
         }
 
-        Ok(StringType::Bytes(BytesConstantWithRange {
-            value: content.chars().map(|c| c as u8).collect::<Vec<u8>>().into(),
+        Ok(StringType::Bytes(ast::ExprBytesLiteral {
+            value: content.chars().map(|c| c as u8).collect::<Vec<u8>>(),
+            implicit_concatenated: false,
             range: self.range(start_location),
         }))
     }
@@ -288,12 +269,10 @@ impl<'a> StringParser<'a> {
                 ch => value.push(ch),
             }
         }
-        Ok(StringType::Str(StringConstantWithRange {
-            value: StringConstant {
-                value,
-                unicode: self.kind.is_unicode(),
-                implicit_concatenated: false,
-            },
+        Ok(StringType::Str(ast::ExprStringLiteral {
+            value,
+            unicode: self.kind.is_unicode(),
+            implicit_concatenated: false,
             range: self.range(start_location),
         }))
     }
@@ -369,18 +348,13 @@ pub(crate) fn concatenate_strings(
         let mut content: Vec<u8> = vec![];
         for string in strings {
             match string {
-                StringType::Bytes(BytesConstantWithRange {
-                    value: BytesConstant { value, .. },
-                    ..
-                }) => content.extend(value),
+                StringType::Bytes(ast::ExprBytesLiteral { value, .. }) => content.extend(value),
                 _ => unreachable!("Unexpected non-bytes literal."),
             }
         }
-        return Ok(ast::ExprConstant {
-            value: Constant::Bytes(BytesConstant {
-                value: content,
-                implicit_concatenated,
-            }),
+        return Ok(ast::ExprBytesLiteral {
+            value: content,
+            implicit_concatenated,
             range,
         }
         .into());
@@ -391,19 +365,14 @@ pub(crate) fn concatenate_strings(
         let is_unicode = strings.first().map_or(false, StringType::is_unicode);
         for string in strings {
             match string {
-                StringType::Str(StringConstantWithRange {
-                    value: StringConstant { value, .. },
-                    ..
-                }) => content.push_str(&value),
+                StringType::Str(ast::ExprStringLiteral { value, .. }) => content.push_str(&value),
                 _ => unreachable!("Unexpected non-string literal."),
             }
         }
-        return Ok(ast::ExprConstant {
-            value: Constant::Str(StringConstant {
-                value: content,
-                unicode: is_unicode,
-                implicit_concatenated,
-            }),
+        return Ok(ast::ExprStringLiteral {
+            value: content,
+            unicode: is_unicode,
+            implicit_concatenated,
             range,
         }
         .into());
@@ -417,12 +386,10 @@ pub(crate) fn concatenate_strings(
     let mut is_unicode = false;
 
     let take_current = |current: &mut String, start, end, unicode| -> Expr {
-        Expr::Constant(ast::ExprConstant {
-            value: Constant::Str(StringConstant {
-                value: std::mem::take(current),
-                unicode,
-                implicit_concatenated,
-            }),
+        Expr::StringLiteral(ast::ExprStringLiteral {
+            value: std::mem::take(current),
+            unicode,
+            implicit_concatenated,
             range: TextRange::new(start, end),
         })
     };
@@ -446,10 +413,7 @@ pub(crate) fn concatenate_strings(
                             deduped.push(value);
                             is_unicode = false;
                         }
-                        Expr::Constant(ast::ExprConstant {
-                            value: Constant::Str(StringConstant { value, unicode, .. }),
-                            ..
-                        }) => {
+                        Expr::StringLiteral(ast::ExprStringLiteral { value, unicode, .. }) => {
                             if current.is_empty() {
                                 is_unicode |= unicode;
                                 current_start = value_range.start();
@@ -457,14 +421,13 @@ pub(crate) fn concatenate_strings(
                             current_end = value_range.end();
                             current.push_str(&value);
                         }
-                        _ => unreachable!("Expected `Expr::FormattedValue` or `Expr::Constant`"),
+                        _ => {
+                            unreachable!("Expected `Expr::FormattedValue` or `Expr::StringLiteral`")
+                        }
                     }
                 }
             }
-            StringType::Str(StringConstantWithRange {
-                value: StringConstant { value, unicode, .. },
-                ..
-            }) => {
+            StringType::Str(ast::ExprStringLiteral { value, unicode, .. }) => {
                 if current.is_empty() {
                     is_unicode |= unicode;
                     current_start = string_range.start();

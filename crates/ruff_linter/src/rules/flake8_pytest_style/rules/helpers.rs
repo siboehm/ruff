@@ -1,4 +1,4 @@
-use ruff_python_ast::{self as ast, Constant, Decorator, Expr, Keyword};
+use ruff_python_ast::{self as ast, Decorator, Expr, Keyword};
 
 use ruff_python_ast::call_path::{collect_call_path, CallPath};
 use ruff_python_ast::helpers::map_callable;
@@ -45,11 +45,7 @@ pub(super) fn is_pytest_parametrize(decorator: &Decorator, semantic: &SemanticMo
 }
 
 pub(super) fn keyword_is_literal(keyword: &Keyword, literal: &str) -> bool {
-    if let Expr::Constant(ast::ExprConstant {
-        value: Constant::Str(ast::StringConstant { value, .. }),
-        ..
-    }) = &keyword.value
-    {
+    if let Expr::StringLiteral(ast::ExprStringLiteral { value, .. }) = &keyword.value {
         value == literal
     } else {
         false
@@ -58,11 +54,8 @@ pub(super) fn keyword_is_literal(keyword: &Keyword, literal: &str) -> bool {
 
 pub(super) fn is_empty_or_null_string(expr: &Expr) -> bool {
     match expr {
-        Expr::Constant(ast::ExprConstant {
-            value: Constant::Str(string),
-            ..
-        }) => string.is_empty(),
-        Expr::Constant(constant) if constant.value.is_none() => true,
+        Expr::StringLiteral(ast::ExprStringLiteral { value, .. }) => value.is_empty(),
+        Expr::NoneLiteral(_) => true,
         Expr::FString(ast::ExprFString { values, .. }) => {
             values.iter().all(is_empty_or_null_string)
         }

@@ -1,6 +1,6 @@
 use ruff_formatter::{write, FormatRuleWithOptions};
 use ruff_python_ast::AnyNodeRef;
-use ruff_python_ast::{Constant, Expr, ExprAttribute, ExprConstant};
+use ruff_python_ast::{Expr, ExprAttribute, ExprNumberLiteral, Number};
 use ruff_python_trivia::{find_only_token_in_range, SimpleTokenKind};
 use ruff_text_size::{Ranged, TextRange};
 
@@ -41,8 +41,8 @@ impl FormatNodeRule<ExprAttribute> for FormatExprAttribute {
                 // If the value is an integer, we need to parenthesize it to avoid a syntax error.
                 matches!(
                     value.as_ref(),
-                    Expr::Constant(ExprConstant {
-                        value: Constant::Int(_) | Constant::Float(_),
+                    Expr::NumberLiteral(ExprNumberLiteral {
+                        value: Number::Int(_) | Number::Float(_),
                         ..
                     })
                 ) || is_expression_parenthesized(value.into(), f.context().comments().ranges(), f.context().source());
