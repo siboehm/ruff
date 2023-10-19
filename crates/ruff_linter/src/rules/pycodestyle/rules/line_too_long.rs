@@ -47,6 +47,7 @@ use crate::settings::LinterSettings;
 ///
 /// ## Options
 /// - `line-width`
+/// - `pycodestyle.max-line-width`
 /// - `task-tags`
 /// - `pycodestyle.ignore-overlong-task-comments`
 ///

@@ -60,7 +60,7 @@ pub struct Options {
     /// this base configuration file, then merge in any properties defined
     /// in the current configuration file.
     #[option(
-        default = r#"None"#,
+        default = r#"null"#,
         value_type = "str",
         example = r#"
             # Extend the `pyproject.toml` file in the parent directory.
@@ -132,7 +132,7 @@ pub struct Options {
     /// results across many environments, e.g., with a `pyproject.toml`
     /// file).
     #[option(
-        default = "None",
+        default = "null",
         value_type = "str",
         example = r#"
             required-version = "0.0.193"
@@ -359,6 +359,8 @@ pub struct Options {
     ///
     /// Note: Formatted code may exceed the configured line width when it can't automatically
     /// split the line into shorter lines, e.g. because it is a too long comment or identifier.
+    ///
+    /// See [`pycodestyle.max-line-width`](#pycodestyle-max-line-width) to configure different limits for `E501` and the formatter.
     #[option(
         default = "88",
         value_type = "int",
@@ -1062,7 +1064,7 @@ pub struct Flake8CopyrightOptions {
 
     /// Author to enforce within the copyright notice. If provided, the
     /// author must be present immediately following the copyright notice.
-    #[option(default = "None", value_type = "str", example = r#"author = "Ruff""#)]
+    #[option(default = "null", value_type = "str", example = r#"author = "Ruff""#)]
     pub author: Option<String>,
 
     /// A minimum file size (in bytes) required for a copyright notice to
@@ -2266,11 +2268,11 @@ impl Pep8NamingOptions {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct PycodestyleOptions {
-    /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`line-too-long`] violations. By default,
+    /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`line-too-long`](rules/line-too-long.md) violations. By default,
     /// this is set to the value of the global `line-width` option.
     ///
-    /// Overriding the global [`line-width`] allows to use a lower limit for Ruff's formatter and warn about
-    /// extra-long lines that can't be split by the formatter using [`line-too-long`]:
+    /// Overriding the global [`line-width`](#line-width) allows to use a lower limit for Ruff's formatter and warn about
+    /// extra-long lines that can't be split by the formatter using the [`line-too-long`](rules/line-too-long.md) rule:
     ///
     /// ```toml
     /// line-width = 88 # The formatter breaks line's with a width of 88.
@@ -2279,9 +2281,7 @@ pub struct PycodestyleOptions {
     /// max-line-width = 100 # E501 reports lines that exceed the width of 100.
     /// ```
     ///
-    /// [`line-too-long`].
-    ///
-    /// See the [`line-too-long`](https://docs.astral.sh/ruff/rules/line-too-long/) rule for more information.
+    /// See the [`line-too-long`](rules/line-too-long.md) rule for more information.
     #[option(
         default = "null",
         value_type = "int",
@@ -2291,11 +2291,11 @@ pub struct PycodestyleOptions {
     )]
     pub max_line_width: Option<LineWidth>,
 
-    /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`doc-line-too-long`] violations within
+    /// The maximum [width](http://www.unicode.org/reports/tr11/#Overview) to allow for [`doc-line-too-long`](rules/doc-line-too-long.md) violations within
     /// documentation (`W505`), including standalone comments. By default,
     /// this is set to null which disables reporting violations.
     ///
-    /// See the [`doc-line-too-long`](https://docs.astral.sh/ruff/rules/doc-line-too-long/) rule for more information.
+    /// See the [`doc-line-too-long`](rules/doc-line-too-long.md) rule for more information.
     #[option(
         default = "null",
         value_type = "int",
@@ -2309,9 +2309,9 @@ pub struct PycodestyleOptions {
     /// documentation (`W505`), including standalone comments. By default,
     /// this is set to null which disables reporting violations.
     ///
-    /// See the [`doc-line-too-long`](https://docs.astral.sh/ruff/rules/doc-line-too-long/) rule for more information.
+    /// See the [`doc-line-too-long`](rules/doc-line-too-long.md) rule for more information.
     #[option(
-        default = "None",
+        default = "null",
         value_type = "int",
         example = r#"
             max-doc-length = 88
@@ -2389,7 +2389,7 @@ pub struct PydocstyleOptions {
     /// enabling _additional_ rules on top of a convention is currently
     /// unsupported.
     #[option(
-        default = r#"None"#,
+        default = r#"null"#,
         value_type = r#""google" | "numpy" | "pep257""#,
         example = r#"
             # Use Google-style docstrings.
