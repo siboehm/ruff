@@ -1,0 +1,16 @@
+---
+source: crates/ruff_python_ast/tests/visitor.rs
+expression: trace
+---
+- StmtAssign
+  - ExprStringList
+    - ExprStringLiteral
+    - ExprFString
+      - ExprStringLiteral
+      - ExprFormattedValue
+        - ExprStringList
+          - ExprStringLiteral
+          - ExprStringLiteral
+    - ExprStringLiteral
+  - ExprName
+

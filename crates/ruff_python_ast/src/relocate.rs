@@ -164,6 +164,25 @@ pub fn relocate_expr(expr: &mut Expr, location: TextRange) {
         Expr::EllipsisLiteral(nodes::ExprEllipsisLiteral { range }) => {
             *range = location;
         }
+        Expr::StringList(nodes::ExprStringList { values, range }) => {
+            *range = location;
+            for value in values {
+                match value {
+                    nodes::StringType::String(nodes::ExprStringLiteral { range, .. }) => {
+                        *range = location;
+                    }
+                    nodes::StringType::Bytes(nodes::ExprBytesLiteral { range, .. }) => {
+                        *range = location;
+                    }
+                    nodes::StringType::FString(nodes::ExprFString { values, range, .. }) => {
+                        *range = location;
+                        for expr in values {
+                            relocate_expr(expr, location);
+                        }
+                    }
+                }
+            }
+        }
         Expr::Attribute(nodes::ExprAttribute { value, range, .. }) => {
             *range = location;
             relocate_expr(value, location);

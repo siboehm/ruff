@@ -7,13 +7,13 @@ use ruff_python_parser::{parse_tokens, Mode};
 
 use ruff_python_ast::visitor::{
     walk_alias, walk_comprehension, walk_except_handler, walk_expr, walk_keyword, walk_match_case,
-    walk_parameter, walk_parameters, walk_pattern, walk_stmt, walk_type_param, walk_with_item,
-    Visitor,
+    walk_parameter, walk_parameters, walk_pattern, walk_stmt, walk_string_type, walk_type_param,
+    walk_with_item, Visitor,
 };
 use ruff_python_ast::AnyNodeRef;
 use ruff_python_ast::{
     Alias, BoolOp, CmpOp, Comprehension, ExceptHandler, Expr, Keyword, MatchCase, Operator,
-    Parameter, Parameters, Pattern, Stmt, TypeParam, UnaryOp, WithItem,
+    Parameter, Parameters, Pattern, Stmt, StringType, TypeParam, UnaryOp, WithItem,
 };
 
 #[test]
@@ -123,6 +123,15 @@ fn class_type_parameters() {
 #[test]
 fn function_type_parameters() {
     let source = r#"def X[T: str, U, *Ts, **P](): ..."#;
+
+    let trace = trace_visitation(source);
+
+    assert_snapshot!(trace);
+}
+
+#[test]
+fn implicit_string_concatenation() {
+    let source = r#"s = "first" f"second {"one" "two"}" "third""#;
 
     let trace = trace_visitation(source);
 
@@ -279,6 +288,12 @@ impl Visitor<'_> for RecordVisitor {
     fn visit_type_param(&mut self, type_param: &TypeParam) {
         self.enter_node(type_param);
         walk_type_param(self, type_param);
+        self.exit_node();
+    }
+
+    fn visit_string_type(&mut self, string_type: &StringType) {
+        self.enter_node(string_type);
+        walk_string_type(self, string_type);
         self.exit_node();
     }
 }

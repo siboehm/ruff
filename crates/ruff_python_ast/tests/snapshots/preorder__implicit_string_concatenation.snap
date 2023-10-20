@@ -1,0 +1,17 @@
+---
+source: crates/ruff_python_ast/tests/preorder.rs
+expression: trace
+---
+- ModModule
+  - StmtAssign
+    - ExprName
+    - ExprStringList
+      - ExprStringLiteral
+      - ExprFString
+        - ExprStringLiteral
+        - ExprFormattedValue
+          - ExprStringList
+            - ExprStringLiteral
+            - ExprStringLiteral
+      - ExprStringLiteral
+

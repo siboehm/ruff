@@ -31,6 +31,7 @@ pub enum ExpressionRef<'a> {
     BooleanLiteral(&'a ast::ExprBooleanLiteral),
     NoneLiteral(&'a ast::ExprNoneLiteral),
     EllipsisLiteral(&'a ast::ExprEllipsisLiteral),
+    StringList(&'a ast::ExprStringList),
     Attribute(&'a ast::ExprAttribute),
     Subscript(&'a ast::ExprSubscript),
     Starred(&'a ast::ExprStarred),
@@ -75,6 +76,7 @@ impl<'a> From<&'a Expr> for ExpressionRef<'a> {
             Expr::BooleanLiteral(value) => ExpressionRef::BooleanLiteral(value),
             Expr::NoneLiteral(value) => ExpressionRef::NoneLiteral(value),
             Expr::EllipsisLiteral(value) => ExpressionRef::EllipsisLiteral(value),
+            Expr::StringList(value) => ExpressionRef::StringList(value),
             Expr::Attribute(value) => ExpressionRef::Attribute(value),
             Expr::Subscript(value) => ExpressionRef::Subscript(value),
             Expr::Starred(value) => ExpressionRef::Starred(value),
@@ -212,6 +214,11 @@ impl<'a> From<&'a ast::ExprEllipsisLiteral> for ExpressionRef<'a> {
         Self::EllipsisLiteral(value)
     }
 }
+impl<'a> From<&'a ast::ExprStringList> for ExpressionRef<'a> {
+    fn from(value: &'a ast::ExprStringList) -> Self {
+        Self::StringList(value)
+    }
+}
 impl<'a> From<&'a ast::ExprAttribute> for ExpressionRef<'a> {
     fn from(value: &'a ast::ExprAttribute) -> Self {
         Self::Attribute(value)
@@ -283,6 +290,7 @@ impl<'a> From<ExpressionRef<'a>> for AnyNodeRef<'a> {
             ExpressionRef::EllipsisLiteral(expression) => {
                 AnyNodeRef::ExprEllipsisLiteral(expression)
             }
+            ExpressionRef::StringList(expression) => AnyNodeRef::ExprStringList(expression),
             ExpressionRef::Attribute(expression) => AnyNodeRef::ExprAttribute(expression),
             ExpressionRef::Subscript(expression) => AnyNodeRef::ExprSubscript(expression),
             ExpressionRef::Starred(expression) => AnyNodeRef::ExprStarred(expression),
@@ -325,6 +333,7 @@ impl Ranged for ExpressionRef<'_> {
             ExpressionRef::BooleanLiteral(expression) => expression.range(),
             ExpressionRef::NoneLiteral(expression) => expression.range(),
             ExpressionRef::EllipsisLiteral(expression) => expression.range(),
+            ExpressionRef::StringList(expression) => expression.range(),
             ExpressionRef::Attribute(expression) => expression.range(),
             ExpressionRef::Subscript(expression) => expression.range(),
             ExpressionRef::Starred(expression) => expression.range(),

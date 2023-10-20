@@ -5,8 +5,8 @@ pub mod preorder;
 use crate::{
     self as ast, Alias, Arguments, BoolOp, CmpOp, Comprehension, Decorator, ElifElseClause,
     ExceptHandler, Expr, ExprContext, Keyword, MatchCase, Operator, Parameter, Parameters, Pattern,
-    PatternArguments, PatternKeyword, Stmt, TypeParam, TypeParamTypeVar, TypeParams, UnaryOp,
-    WithItem,
+    PatternArguments, PatternKeyword, Stmt, StringType, TypeParam, TypeParamTypeVar, TypeParams,
+    UnaryOp, WithItem,
 };
 
 /// A trait for AST visitors. Visits all nodes in the AST recursively in evaluation-order.
@@ -95,6 +95,9 @@ pub trait Visitor<'a> {
     fn visit_elif_else_clause(&mut self, elif_else_clause: &'a ElifElseClause) {
         walk_elif_else_clause(self, elif_else_clause);
     }
+    fn visit_string_type(&mut self, string_type: &'a StringType) {
+        walk_string_type(self, string_type);
+    }
 }
 
 pub fn walk_body<'a, V: Visitor<'a> + ?Sized>(visitor: &mut V, body: &'a [Stmt]) {
@@ -111,6 +114,17 @@ pub fn walk_elif_else_clause<'a, V: Visitor<'a> + ?Sized>(
         visitor.visit_expr(test);
     }
     visitor.visit_body(&elif_else_clause.body);
+}
+
+pub fn walk_string_type<'a, V: Visitor<'a> + ?Sized>(visitor: &mut V, string_type: &'a StringType) {
+    match string_type {
+        StringType::String(_) | StringType::Bytes(_) => {}
+        StringType::FString(ast::ExprFString { values, .. }) => {
+            for expr in values {
+                visitor.visit_expr(expr);
+            }
+        }
+    }
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a> + ?Sized>(visitor: &mut V, stmt: &'a Stmt) {
@@ -483,6 +497,11 @@ pub fn walk_expr<'a, V: Visitor<'a> + ?Sized>(visitor: &mut V, expr: &'a Expr) {
         | Expr::BooleanLiteral(_)
         | Expr::NoneLiteral(_)
         | Expr::EllipsisLiteral(_) => {}
+        Expr::StringList(ast::ExprStringList { values, .. }) => {
+            for string_type in values {
+                visitor.visit_string_type(string_type);
+            }
+        }
         Expr::Attribute(ast::ExprAttribute { value, ctx, .. }) => {
             visitor.visit_expr(value);
             visitor.visit_expr_context(ctx);

@@ -2,8 +2,8 @@ use crate::visitor::preorder::PreorderVisitor;
 use crate::{
     self as ast, Alias, ArgOrKeyword, Arguments, Comprehension, Decorator, ExceptHandler, Expr,
     Keyword, MatchCase, Mod, Parameter, ParameterWithDefault, Parameters, Pattern,
-    PatternArguments, PatternKeyword, Stmt, TypeParam, TypeParamParamSpec, TypeParamTypeVar,
-    TypeParamTypeVarTuple, TypeParams, WithItem,
+    PatternArguments, PatternKeyword, Stmt, StringType, TypeParam, TypeParamParamSpec,
+    TypeParamTypeVar, TypeParamTypeVarTuple, TypeParams, WithItem,
 };
 use ruff_text_size::{Ranged, TextRange};
 use std::ptr::NonNull;
@@ -79,6 +79,7 @@ pub enum AnyNode {
     ExprBooleanLiteral(ast::ExprBooleanLiteral),
     ExprNoneLiteral(ast::ExprNoneLiteral),
     ExprEllipsisLiteral(ast::ExprEllipsisLiteral),
+    ExprStringList(ast::ExprStringList),
     ExprAttribute(ast::ExprAttribute),
     ExprSubscript(ast::ExprSubscript),
     ExprStarred(ast::ExprStarred),
@@ -171,6 +172,7 @@ impl AnyNode {
             | AnyNode::ExprBooleanLiteral(_)
             | AnyNode::ExprNoneLiteral(_)
             | AnyNode::ExprEllipsisLiteral(_)
+            | AnyNode::ExprStringList(_)
             | AnyNode::ExprAttribute(_)
             | AnyNode::ExprSubscript(_)
             | AnyNode::ExprStarred(_)
@@ -235,6 +237,7 @@ impl AnyNode {
             AnyNode::ExprBooleanLiteral(node) => Some(Expr::BooleanLiteral(node)),
             AnyNode::ExprNoneLiteral(node) => Some(Expr::NoneLiteral(node)),
             AnyNode::ExprEllipsisLiteral(node) => Some(Expr::EllipsisLiteral(node)),
+            AnyNode::ExprStringList(node) => Some(Expr::StringList(node)),
             AnyNode::ExprAttribute(node) => Some(Expr::Attribute(node)),
             AnyNode::ExprSubscript(node) => Some(Expr::Subscript(node)),
             AnyNode::ExprStarred(node) => Some(Expr::Starred(node)),
@@ -355,6 +358,7 @@ impl AnyNode {
             | AnyNode::ExprBooleanLiteral(_)
             | AnyNode::ExprNoneLiteral(_)
             | AnyNode::ExprEllipsisLiteral(_)
+            | AnyNode::ExprStringList(_)
             | AnyNode::ExprAttribute(_)
             | AnyNode::ExprSubscript(_)
             | AnyNode::ExprStarred(_)
@@ -455,6 +459,7 @@ impl AnyNode {
             | AnyNode::ExprBooleanLiteral(_)
             | AnyNode::ExprNoneLiteral(_)
             | AnyNode::ExprEllipsisLiteral(_)
+            | AnyNode::ExprStringList(_)
             | AnyNode::ExprAttribute(_)
             | AnyNode::ExprSubscript(_)
             | AnyNode::ExprStarred(_)
@@ -540,6 +545,7 @@ impl AnyNode {
             | AnyNode::ExprBooleanLiteral(_)
             | AnyNode::ExprNoneLiteral(_)
             | AnyNode::ExprEllipsisLiteral(_)
+            | AnyNode::ExprStringList(_)
             | AnyNode::ExprAttribute(_)
             | AnyNode::ExprSubscript(_)
             | AnyNode::ExprStarred(_)
@@ -650,6 +656,7 @@ impl AnyNode {
             Self::ExprBooleanLiteral(node) => AnyNodeRef::ExprBooleanLiteral(node),
             Self::ExprNoneLiteral(node) => AnyNodeRef::ExprNoneLiteral(node),
             Self::ExprEllipsisLiteral(node) => AnyNodeRef::ExprEllipsisLiteral(node),
+            Self::ExprStringList(node) => AnyNodeRef::ExprStringList(node),
             Self::ExprAttribute(node) => AnyNodeRef::ExprAttribute(node),
             Self::ExprSubscript(node) => AnyNodeRef::ExprSubscript(node),
             Self::ExprStarred(node) => AnyNodeRef::ExprStarred(node),
@@ -2889,6 +2896,45 @@ impl AstNode for ast::ExprEllipsisLiteral {
     {
     }
 }
+impl AstNode for ast::ExprStringList {
+    fn cast(kind: AnyNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        if let AnyNode::ExprStringList(node) = kind {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    fn cast_ref(kind: AnyNodeRef) -> Option<&Self> {
+        if let AnyNodeRef::ExprStringList(node) = kind {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
+    fn as_any_node_ref(&self) -> AnyNodeRef {
+        AnyNodeRef::from(self)
+    }
+
+    fn into_any_node(self) -> AnyNode {
+        AnyNode::from(self)
+    }
+
+    fn visit_preorder<'a, V>(&'a self, visitor: &mut V)
+    where
+        V: PreorderVisitor<'a> + ?Sized,
+    {
+        let ast::ExprStringList { values, range: _ } = self;
+
+        for string in values {
+            visitor.visit_string_type(string);
+        }
+    }
+}
 impl AstNode for ast::ExprAttribute {
     fn cast(kind: AnyNode) -> Option<Self>
     where
@@ -4333,6 +4379,7 @@ impl From<Expr> for AnyNode {
             Expr::BooleanLiteral(node) => AnyNode::ExprBooleanLiteral(node),
             Expr::NoneLiteral(node) => AnyNode::ExprNoneLiteral(node),
             Expr::EllipsisLiteral(node) => AnyNode::ExprEllipsisLiteral(node),
+            Expr::StringList(node) => AnyNode::ExprStringList(node),
             Expr::Attribute(node) => AnyNode::ExprAttribute(node),
             Expr::Subscript(node) => AnyNode::ExprSubscript(node),
             Expr::Starred(node) => AnyNode::ExprStarred(node),
@@ -4373,6 +4420,16 @@ impl From<ExceptHandler> for AnyNode {
     fn from(handler: ExceptHandler) -> Self {
         match handler {
             ExceptHandler::ExceptHandler(handler) => AnyNode::ExceptHandlerExceptHandler(handler),
+        }
+    }
+}
+
+impl From<StringType> for AnyNode {
+    fn from(string: StringType) -> Self {
+        match string {
+            StringType::String(node) => AnyNode::ExprStringLiteral(node),
+            StringType::Bytes(node) => AnyNode::ExprBytesLiteral(node),
+            StringType::FString(node) => AnyNode::ExprFString(node),
         }
     }
 }
@@ -4695,6 +4752,12 @@ impl From<ast::ExprEllipsisLiteral> for AnyNode {
     }
 }
 
+impl From<ast::ExprStringList> for AnyNode {
+    fn from(node: ast::ExprStringList) -> Self {
+        AnyNode::ExprStringList(node)
+    }
+}
+
 impl From<ast::ExprAttribute> for AnyNode {
     fn from(node: ast::ExprAttribute) -> Self {
         AnyNode::ExprAttribute(node)
@@ -4937,6 +5000,7 @@ impl Ranged for AnyNode {
             AnyNode::ExprBooleanLiteral(node) => node.range(),
             AnyNode::ExprNoneLiteral(node) => node.range(),
             AnyNode::ExprEllipsisLiteral(node) => node.range(),
+            AnyNode::ExprStringList(node) => node.range(),
             AnyNode::ExprAttribute(node) => node.range(),
             AnyNode::ExprSubscript(node) => node.range(),
             AnyNode::ExprStarred(node) => node.range(),
@@ -5029,6 +5093,7 @@ pub enum AnyNodeRef<'a> {
     ExprBooleanLiteral(&'a ast::ExprBooleanLiteral),
     ExprNoneLiteral(&'a ast::ExprNoneLiteral),
     ExprEllipsisLiteral(&'a ast::ExprEllipsisLiteral),
+    ExprStringList(&'a ast::ExprStringList),
     ExprAttribute(&'a ast::ExprAttribute),
     ExprSubscript(&'a ast::ExprSubscript),
     ExprStarred(&'a ast::ExprStarred),
@@ -5120,6 +5185,7 @@ impl<'a> AnyNodeRef<'a> {
             AnyNodeRef::ExprBooleanLiteral(node) => NonNull::from(*node).cast(),
             AnyNodeRef::ExprNoneLiteral(node) => NonNull::from(*node).cast(),
             AnyNodeRef::ExprEllipsisLiteral(node) => NonNull::from(*node).cast(),
+            AnyNodeRef::ExprStringList(node) => NonNull::from(*node).cast(),
             AnyNodeRef::ExprAttribute(node) => NonNull::from(*node).cast(),
             AnyNodeRef::ExprSubscript(node) => NonNull::from(*node).cast(),
             AnyNodeRef::ExprStarred(node) => NonNull::from(*node).cast(),
@@ -5217,6 +5283,7 @@ impl<'a> AnyNodeRef<'a> {
             AnyNodeRef::ExprBooleanLiteral(_) => NodeKind::ExprBooleanLiteral,
             AnyNodeRef::ExprNoneLiteral(_) => NodeKind::ExprNoneLiteral,
             AnyNodeRef::ExprEllipsisLiteral(_) => NodeKind::ExprEllipsisLiteral,
+            AnyNodeRef::ExprStringList(_) => NodeKind::ExprStringList,
             AnyNodeRef::ExprAttribute(_) => NodeKind::ExprAttribute,
             AnyNodeRef::ExprSubscript(_) => NodeKind::ExprSubscript,
             AnyNodeRef::ExprStarred(_) => NodeKind::ExprStarred,
@@ -5309,6 +5376,7 @@ impl<'a> AnyNodeRef<'a> {
             | AnyNodeRef::ExprBooleanLiteral(_)
             | AnyNodeRef::ExprNoneLiteral(_)
             | AnyNodeRef::ExprEllipsisLiteral(_)
+            | AnyNodeRef::ExprStringList(_)
             | AnyNodeRef::ExprAttribute(_)
             | AnyNodeRef::ExprSubscript(_)
             | AnyNodeRef::ExprStarred(_)
@@ -5373,6 +5441,7 @@ impl<'a> AnyNodeRef<'a> {
             | AnyNodeRef::ExprBooleanLiteral(_)
             | AnyNodeRef::ExprNoneLiteral(_)
             | AnyNodeRef::ExprEllipsisLiteral(_)
+            | AnyNodeRef::ExprStringList(_)
             | AnyNodeRef::ExprAttribute(_)
             | AnyNodeRef::ExprSubscript(_)
             | AnyNodeRef::ExprStarred(_)
@@ -5492,6 +5561,7 @@ impl<'a> AnyNodeRef<'a> {
             | AnyNodeRef::ExprBooleanLiteral(_)
             | AnyNodeRef::ExprNoneLiteral(_)
             | AnyNodeRef::ExprEllipsisLiteral(_)
+            | AnyNodeRef::ExprStringList(_)
             | AnyNodeRef::ExprAttribute(_)
             | AnyNodeRef::ExprSubscript(_)
             | AnyNodeRef::ExprStarred(_)
@@ -5592,6 +5662,7 @@ impl<'a> AnyNodeRef<'a> {
             | AnyNodeRef::ExprBooleanLiteral(_)
             | AnyNodeRef::ExprNoneLiteral(_)
             | AnyNodeRef::ExprEllipsisLiteral(_)
+            | AnyNodeRef::ExprStringList(_)
             | AnyNodeRef::ExprAttribute(_)
             | AnyNodeRef::ExprSubscript(_)
             | AnyNodeRef::ExprStarred(_)
@@ -5677,6 +5748,7 @@ impl<'a> AnyNodeRef<'a> {
             | AnyNodeRef::ExprBooleanLiteral(_)
             | AnyNodeRef::ExprNoneLiteral(_)
             | AnyNodeRef::ExprEllipsisLiteral(_)
+            | AnyNodeRef::ExprStringList(_)
             | AnyNodeRef::ExprAttribute(_)
             | AnyNodeRef::ExprSubscript(_)
             | AnyNodeRef::ExprStarred(_)
@@ -5796,6 +5868,7 @@ impl<'a> AnyNodeRef<'a> {
             AnyNodeRef::ExprBooleanLiteral(node) => node.visit_preorder(visitor),
             AnyNodeRef::ExprNoneLiteral(node) => node.visit_preorder(visitor),
             AnyNodeRef::ExprEllipsisLiteral(node) => node.visit_preorder(visitor),
+            AnyNodeRef::ExprStringList(node) => node.visit_preorder(visitor),
             AnyNodeRef::ExprAttribute(node) => node.visit_preorder(visitor),
             AnyNodeRef::ExprSubscript(node) => node.visit_preorder(visitor),
             AnyNodeRef::ExprStarred(node) => node.visit_preorder(visitor),
@@ -6212,6 +6285,12 @@ impl<'a> From<&'a ast::ExprEllipsisLiteral> for AnyNodeRef<'a> {
     }
 }
 
+impl<'a> From<&'a ast::ExprStringList> for AnyNodeRef<'a> {
+    fn from(node: &'a ast::ExprStringList) -> Self {
+        AnyNodeRef::ExprStringList(node)
+    }
+}
+
 impl<'a> From<&'a ast::ExprAttribute> for AnyNodeRef<'a> {
     fn from(node: &'a ast::ExprAttribute) -> Self {
         AnyNodeRef::ExprAttribute(node)
@@ -6415,6 +6494,7 @@ impl<'a> From<&'a Expr> for AnyNodeRef<'a> {
             Expr::BooleanLiteral(node) => AnyNodeRef::ExprBooleanLiteral(node),
             Expr::NoneLiteral(node) => AnyNodeRef::ExprNoneLiteral(node),
             Expr::EllipsisLiteral(node) => AnyNodeRef::ExprEllipsisLiteral(node),
+            Expr::StringList(node) => AnyNodeRef::ExprStringList(node),
             Expr::Attribute(node) => AnyNodeRef::ExprAttribute(node),
             Expr::Subscript(node) => AnyNodeRef::ExprSubscript(node),
             Expr::Starred(node) => AnyNodeRef::ExprStarred(node),
@@ -6467,6 +6547,16 @@ impl<'a> From<&'a ExceptHandler> for AnyNodeRef<'a> {
             ExceptHandler::ExceptHandler(handler) => {
                 AnyNodeRef::ExceptHandlerExceptHandler(handler)
             }
+        }
+    }
+}
+
+impl<'a> From<&'a StringType> for AnyNodeRef<'a> {
+    fn from(string_type: &'a StringType) -> Self {
+        match string_type {
+            StringType::String(node) => AnyNodeRef::ExprStringLiteral(node),
+            StringType::Bytes(node) => AnyNodeRef::ExprBytesLiteral(node),
+            StringType::FString(node) => AnyNodeRef::ExprFString(node),
         }
     }
 }
@@ -6572,6 +6662,7 @@ impl Ranged for AnyNodeRef<'_> {
             AnyNodeRef::ExprBooleanLiteral(node) => node.range(),
             AnyNodeRef::ExprNoneLiteral(node) => node.range(),
             AnyNodeRef::ExprEllipsisLiteral(node) => node.range(),
+            AnyNodeRef::ExprStringList(node) => node.range(),
             AnyNodeRef::ExprAttribute(node) => node.range(),
             AnyNodeRef::ExprSubscript(node) => node.range(),
             AnyNodeRef::ExprStarred(node) => node.range(),
@@ -6666,6 +6757,7 @@ pub enum NodeKind {
     ExprBooleanLiteral,
     ExprNoneLiteral,
     ExprEllipsisLiteral,
+    ExprStringList,
     ExprAttribute,
     ExprSubscript,
     ExprStarred,

@@ -603,6 +603,8 @@ pub enum Expr {
     NoneLiteral(ExprNoneLiteral),
     #[is(name = "ellipsis_literal_expr")]
     EllipsisLiteral(ExprEllipsisLiteral),
+    #[is(name = "string_list_expr")]
+    StringList(ExprStringList),
     #[is(name = "attribute_expr")]
     Attribute(ExprAttribute),
     #[is(name = "subscript_expr")]
@@ -1108,6 +1110,59 @@ impl From<ExprEllipsisLiteral> for Expr {
 impl Ranged for ExprEllipsisLiteral {
     fn range(&self) -> TextRange {
         self.range
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExprStringList {
+    pub range: TextRange,
+    pub values: Vec<StringType>,
+}
+
+impl From<ExprStringList> for Expr {
+    fn from(payload: ExprStringList) -> Self {
+        Expr::StringList(payload)
+    }
+}
+
+impl Ranged for ExprStringList {
+    fn range(&self) -> TextRange {
+        self.range
+    }
+}
+
+impl Deref for ExprStringList {
+    type Target = [StringType];
+
+    fn deref(&self) -> &Self::Target {
+        &self.values
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, is_macro::Is)]
+pub enum StringType {
+    String(ExprStringLiteral),
+    Bytes(ExprBytesLiteral),
+    FString(ExprFString),
+}
+
+impl Ranged for StringType {
+    fn range(&self) -> TextRange {
+        match self {
+            Self::String(string) => string.range(),
+            Self::Bytes(bytes) => bytes.range(),
+            Self::FString(fstring) => fstring.range(),
+        }
+    }
+}
+
+impl From<StringType> for Expr {
+    fn from(payload: StringType) -> Self {
+        match payload {
+            StringType::String(string) => Expr::StringLiteral(string),
+            StringType::Bytes(bytes) => Expr::BytesLiteral(bytes),
+            StringType::FString(fstring) => Expr::FString(fstring),
+        }
     }
 }
 
@@ -3096,6 +3151,7 @@ impl Ranged for crate::Expr {
             Expr::BooleanLiteral(node) => node.range(),
             Expr::NoneLiteral(node) => node.range(),
             Expr::EllipsisLiteral(node) => node.range(),
+            Self::StringList(node) => node.range(),
             Self::Attribute(node) => node.range(),
             Self::Subscript(node) => node.range(),
             Self::Starred(node) => node.range(),
@@ -3424,6 +3480,11 @@ impl From<ExprNoneLiteral> for ParenthesizedExpr {
 impl From<ExprEllipsisLiteral> for ParenthesizedExpr {
     fn from(payload: ExprEllipsisLiteral) -> Self {
         Expr::EllipsisLiteral(payload).into()
+    }
+}
+impl From<ExprStringList> for ParenthesizedExpr {
+    fn from(payload: ExprStringList) -> Self {
+        Expr::StringList(payload).into()
     }
 }
 impl From<ExprAttribute> for ParenthesizedExpr {

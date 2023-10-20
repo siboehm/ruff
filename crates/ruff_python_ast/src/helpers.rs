@@ -12,7 +12,8 @@ use crate::parenthesize::parenthesized_range;
 use crate::statement_visitor::{walk_body, walk_stmt, StatementVisitor};
 use crate::AnyNodeRef;
 use crate::{
-    self as ast, Arguments, CmpOp, ExceptHandler, Expr, MatchCase, Pattern, Stmt, TypeParam,
+    self as ast, Arguments, CmpOp, ExceptHandler, Expr, MatchCase, Pattern, Stmt, StringType,
+    TypeParam,
 };
 
 /// Return `true` if the `Stmt` is a compound statement (as opposed to a simple statement).
@@ -254,6 +255,9 @@ pub fn any_over_expr(expr: &Expr, func: &dyn Fn(&Expr) -> bool) -> bool {
                     .as_ref()
                     .is_some_and(|value| any_over_expr(value, func))
         }
+        Expr::StringList(ast::ExprStringList { values, range: _ }) => values
+            .iter()
+            .any(|string_type| any_over_string_type(string_type, func)),
         Expr::Name(_)
         | Expr::StringLiteral(_)
         | Expr::BytesLiteral(_)
@@ -262,6 +266,15 @@ pub fn any_over_expr(expr: &Expr, func: &dyn Fn(&Expr) -> bool) -> bool {
         | Expr::NoneLiteral(_)
         | Expr::EllipsisLiteral(_)
         | Expr::IpyEscapeCommand(_) => false,
+    }
+}
+
+pub fn any_over_string_type(string_type: &StringType, func: &dyn Fn(&Expr) -> bool) -> bool {
+    match string_type {
+        StringType::FString(ast::ExprFString { values, .. }) => {
+            values.iter().any(|expr| any_over_expr(expr, func))
+        }
+        StringType::String(_) | StringType::Bytes(_) => false,
     }
 }
 

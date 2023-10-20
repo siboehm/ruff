@@ -4,13 +4,13 @@ use insta::assert_snapshot;
 
 use ruff_python_ast::visitor::preorder::{
     walk_alias, walk_comprehension, walk_except_handler, walk_expr, walk_keyword, walk_match_case,
-    walk_module, walk_parameter, walk_parameters, walk_pattern, walk_stmt, walk_type_param,
-    walk_with_item, PreorderVisitor,
+    walk_module, walk_parameter, walk_parameters, walk_pattern, walk_stmt, walk_string_type,
+    walk_type_param, walk_with_item, PreorderVisitor,
 };
 use ruff_python_ast::AnyNodeRef;
 use ruff_python_ast::{
     Alias, BoolOp, CmpOp, Comprehension, ExceptHandler, Expr, Keyword, MatchCase, Mod, Operator,
-    Parameter, Parameters, Pattern, Singleton, Stmt, TypeParam, UnaryOp, WithItem,
+    Parameter, Parameters, Pattern, Singleton, Stmt, StringType, TypeParam, UnaryOp, WithItem,
 };
 use ruff_python_parser::lexer::lex;
 use ruff_python_parser::{parse_tokens, Mode};
@@ -128,6 +128,15 @@ fn function_type_parameters() {
     assert_snapshot!(trace);
 }
 
+#[test]
+fn implicit_string_concatenation() {
+    let source = r#"s = "first" f"second {"one" "two"}" "third""#;
+
+    let trace = trace_preorder_visitation(source);
+
+    assert_snapshot!(trace);
+}
+
 fn trace_preorder_visitation(source: &str) -> String {
     let tokens = lex(source, Mode::Module);
     let parsed = parse_tokens(tokens, source, Mode::Module, "test.py").unwrap();
@@ -195,6 +204,12 @@ impl PreorderVisitor<'_> for RecordVisitor {
 
     fn visit_singleton(&mut self, singleton: &Singleton) {
         self.emit(&singleton);
+    }
+
+    fn visit_string_type(&mut self, string_type: &StringType) {
+        self.enter_node(string_type);
+        walk_string_type(self, string_type);
+        self.exit_node();
     }
 
     fn visit_bool_op(&mut self, bool_op: &BoolOp) {

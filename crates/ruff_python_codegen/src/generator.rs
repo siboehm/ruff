@@ -5,8 +5,8 @@ use std::ops::Deref;
 use ruff_python_ast::{
     self as ast, Alias, ArgOrKeyword, BoolOp, CmpOp, Comprehension, ConversionFlag, DebugText,
     ExceptHandler, Expr, Identifier, MatchCase, Operator, Parameter, Parameters, Pattern,
-    Singleton, Stmt, Suite, TypeParam, TypeParamParamSpec, TypeParamTypeVar, TypeParamTypeVarTuple,
-    WithItem,
+    Singleton, Stmt, StringType, Suite, TypeParam, TypeParamParamSpec, TypeParamTypeVar,
+    TypeParamTypeVarTuple, WithItem,
 };
 use ruff_python_ast::{ParameterWithDefault, TypeParams};
 use ruff_python_literal::escape::{AsciiEscape, Escape, UnicodeEscape};
@@ -773,6 +773,23 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn unparse_string_type(&mut self, ast: &StringType) {
+        match ast {
+            StringType::String(ast::ExprStringLiteral { value, unicode, .. }) => {
+                if *unicode {
+                    self.p("u");
+                }
+                self.p_str_repr(value);
+            }
+            StringType::Bytes(ast::ExprBytesLiteral { value, .. }) => {
+                self.p_bytes_repr(value);
+            }
+            StringType::FString(ast::ExprFString { values, .. }) => {
+                self.unparse_f_string(values, false);
+            }
+        }
+    }
+
     pub(crate) fn unparse_expr(&mut self, ast: &Expr, level: u8) {
         macro_rules! opprec {
             ($opty:ident, $x:expr, $enu:path, $($var:ident($op:literal, $prec:ident)),*$(,)?) => {
@@ -1130,6 +1147,13 @@ impl<'a> Generator<'a> {
             }
             Expr::EllipsisLiteral(_) => {
                 self.p("...");
+            }
+            Expr::StringList(ast::ExprStringList { values, .. }) => {
+                let mut first = true;
+                for value in values {
+                    self.p_delim(&mut first, " ");
+                    self.unparse_string_type(value);
+                }
             }
             Expr::Attribute(ast::ExprAttribute { value, attr, .. }) => {
                 if let Expr::NumberLiteral(ast::ExprNumberLiteral {
@@ -1669,6 +1693,11 @@ class Foo:
         assert_round_trip!(r#"f(*args, a=1, **kwargs)"#);
         assert_round_trip!(r#"f(*args, a=1, *args2, **kwargs)"#);
         assert_round_trip!("class A(*args, a=2, *args2, **kwargs):\n    pass");
+
+        // Implicit string concatenation
+        assert_round_trip!(r#""foo" "bar""#);
+        assert_round_trip!(r#"b"foo" b"bar""#);
+        assert_round_trip!(r#""foo" u"bar" "baz" f"buzz""#);
     }
 
     #[test]
@@ -1678,7 +1707,7 @@ class Foo:
         assert_eq!(round_trip(r#"u'hello'"#), r#"u"hello""#);
         assert_eq!(round_trip(r#"r'hello'"#), r#""hello""#);
         assert_eq!(round_trip(r#"b'hello'"#), r#"b"hello""#);
-        assert_eq!(round_trip(r#"("abc" "def" "ghi")"#), r#""abcdefghi""#);
+        assert_eq!(round_trip(r#"("abc" "def" "ghi")"#), r#""abc" "def" "ghi""#);
         assert_eq!(round_trip(r#""he\"llo""#), r#"'he"llo'"#);
         assert_eq!(round_trip(r#"f"abc{'def'}{1}""#), r#"f"abc{'def'}{1}""#);
         assert_eq!(round_trip(r#"f'abc{"def"}{1}'"#), r#"f"abc{'def'}{1}""#);

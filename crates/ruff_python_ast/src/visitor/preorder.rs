@@ -1,7 +1,8 @@
 use crate::{
     Alias, Arguments, BoolOp, CmpOp, Comprehension, Decorator, ElifElseClause, ExceptHandler, Expr,
     Keyword, MatchCase, Mod, Operator, Parameter, ParameterWithDefault, Parameters, Pattern,
-    PatternArguments, PatternKeyword, Singleton, Stmt, TypeParam, TypeParams, UnaryOp, WithItem,
+    PatternArguments, PatternKeyword, Singleton, Stmt, StringType, TypeParam, TypeParams, UnaryOp,
+    WithItem,
 };
 use crate::{AnyNodeRef, AstNode};
 
@@ -42,6 +43,11 @@ pub trait PreorderVisitor<'a> {
 
     #[inline]
     fn visit_singleton(&mut self, _singleton: &'a Singleton) {}
+
+    #[inline]
+    fn visit_string_type(&mut self, string_type: &'a StringType) {
+        walk_string_type(self, string_type);
+    }
 
     #[inline]
     fn visit_bool_op(&mut self, bool_op: &'a BoolOp) {
@@ -138,7 +144,6 @@ pub trait PreorderVisitor<'a> {
     }
 
     #[inline]
-
     fn visit_pattern_keyword(&mut self, pattern_keyword: &'a PatternKeyword) {
         walk_pattern_keyword(self, pattern_keyword);
     }
@@ -250,6 +255,22 @@ where
     visitor.leave_node(node);
 }
 
+pub fn walk_string_type<'a, V>(visitor: &mut V, string_type: &'a StringType)
+where
+    V: PreorderVisitor<'a> + ?Sized,
+{
+    let node = AnyNodeRef::from(string_type);
+    if visitor.enter_node(node).is_traverse() {
+        match string_type {
+            StringType::String(expr) => expr.visit_preorder(visitor),
+            StringType::Bytes(expr) => expr.visit_preorder(visitor),
+            StringType::FString(expr) => expr.visit_preorder(visitor),
+        }
+    }
+
+    visitor.leave_node(node);
+}
+
 pub fn walk_expr<'a, V>(visitor: &mut V, expr: &'a Expr)
 where
     V: PreorderVisitor<'a> + ?Sized,
@@ -282,6 +303,7 @@ where
             Expr::BooleanLiteral(expr) => expr.visit_preorder(visitor),
             Expr::NoneLiteral(expr) => expr.visit_preorder(visitor),
             Expr::EllipsisLiteral(expr) => expr.visit_preorder(visitor),
+            Expr::StringList(expr) => expr.visit_preorder(visitor),
             Expr::Attribute(expr) => expr.visit_preorder(visitor),
             Expr::Subscript(expr) => expr.visit_preorder(visitor),
             Expr::Starred(expr) => expr.visit_preorder(visitor),
