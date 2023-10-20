@@ -26,7 +26,7 @@ use crate::rules::{
 use crate::settings::types::{FilePatternSet, PerFileIgnore, PythonVersion};
 use crate::{codes, RuleSelector};
 
-use super::line_width::{LineWidth, TabSize};
+use super::line_width::{IndentWidth, LineWidth};
 
 use self::rule_table::RuleTable;
 use self::types::PreviewMode;
@@ -60,7 +60,7 @@ pub struct LinterSettings {
     pub logger_objects: Vec<String>,
     pub namespace_packages: Vec<PathBuf>,
     pub src: Vec<PathBuf>,
-    pub tab_size: TabSize,
+    pub tab_size: IndentWidth,
     pub task_tags: Vec<String>,
     pub typing_modules: Vec<String>,
 
@@ -157,7 +157,7 @@ impl LinterSettings {
 
             src: vec![path_dedot::CWD.clone()],
             // Needs duplicating
-            tab_size: TabSize::default(),
+            tab_size: IndentWidth::default(),
 
             task_tags: TASK_TAGS.iter().map(ToString::to_string).collect(),
             typing_modules: vec![],

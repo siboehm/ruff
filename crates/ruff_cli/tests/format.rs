@@ -51,7 +51,7 @@ fn format_options() -> Result<()> {
     fs::write(
         &ruff_toml,
         r#"
-tab-size = 8
+indent-width = 8
 line-width = 84
 
 [format]
@@ -278,6 +278,42 @@ if condition:
     ----- stderr -----
     warning: `ruff format` is not yet stable, and subject to change in future versions.
     "###);
+    Ok(())
+}
+
+#[test]
+fn deprecated_options() -> Result<()> {
+    let tempdir = TempDir::new()?;
+    let ruff_toml = tempdir.path().join("ruff.toml");
+    fs::write(
+        &ruff_toml,
+        r#"
+tab-size = 2
+"#,
+    )?;
+
+    insta::with_settings!({filters => vec![
+        (&*regex::escape(ruff_toml.to_str().unwrap()), "[RUFF-TOML-PATH]"),
+    ]}, {
+        assert_cmd_snapshot!(Command::new(get_cargo_bin(BIN_NAME))
+            .args(["format", "--config"])
+            .arg(&ruff_toml)
+            .arg("-")
+            .pass_stdin(r#"
+if True:
+    pass
+    "#), @r###"
+        success: true
+        exit_code: 0
+        ----- stdout -----
+        if True:
+          pass
+
+        ----- stderr -----
+        warning: `ruff format` is not yet stable, and subject to change in future versions.
+        warning: The `tab-size` option has been renamed to `indent-width` to emphasize that it configures the indentation used by the formatter as well as the tab width. Please update your configuration to use `indent-width = <value>` instead.
+        "###);
+    });
     Ok(())
 }
 
